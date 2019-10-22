@@ -483,7 +483,7 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
 
       ENDDO
 
-   ELSE IF( horz_order == 5 ) THEN
+   ELSE IF( horz_order == 5 .or. horz_order == 7 .or. horz_order == 9 ) THEN
 
 !  5th order horizontal flux calculation
 !  This code is EXACTLY the same as the 6th order code
@@ -1397,7 +1397,7 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
          ENDDO
       ENDDO
 
-    ELSE IF (vert_order == 5) THEN    
+    ELSE IF (vert_order == 5 .or. vert_order == 7 .or. vert_order == 9) THEN    
 
       DO j = j_start, j_end
 
@@ -1901,7 +1901,7 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 
       ENDDO
 
-   ELSE IF( horz_order == 5 ) THEN
+   ELSE IF( horz_order == 5 .or. horz_order == 7 .or. horz_order == 9 ) THEN
 
 !  5th order horizontal flux calculation
 !  This code is EXACTLY the same as the 6th order code
@@ -2878,7 +2878,7 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 
       ENDDO
 
-   ELSE IF (vert_order == 5) THEN    
+   ELSE IF (vert_order == 5 .or. vert_order == 7 .or. vert_order == 9) THEN    
 
       DO j = j_start, j_end
 
@@ -3391,7 +3391,7 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 
       ENDDO
 
-  ELSE IF( horz_order == 5 ) THEN
+  ELSE IF( horz_order == 5 .or. horz_order == 7 .or. horz_order == 9 ) THEN
 
 !  determine boundary mods for flux operators
 !  We degrade the flux operators from 3rd/4th order
@@ -4233,7 +4233,7 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 
       ENDDO
 
-   ELSE IF (vert_order == 5) THEN    
+   ELSE IF (vert_order == 5 .or. vert_order == 7 .or. vert_order == 9) THEN    
 
       DO j = j_start, j_end
 
@@ -4460,8 +4460,8 @@ SUBROUTINE advect_w    ( w, w_old, tendency,            &
 !  set order for the advection scheme
 
   ktf=MIN(kte,kde-1)
-  horz_order = config_flags%h_sca_adv_order
-  vert_order = config_flags%v_sca_adv_order
+  horz_order = config_flags%h_mom_adv_order
+  vert_order = config_flags%v_mom_adv_order
 
 !  here is the choice of flux operators
 
@@ -4781,7 +4781,7 @@ SUBROUTINE advect_w    ( w, w_old, tendency,            &
 
       ENDDO
 
-ELSE IF (horz_order == 5 ) THEN
+ELSE IF( horz_order == 5 .or. horz_order == 7 .or. horz_order == 9 ) THEN
 
 !  determine boundary mods for flux operators
 !  We degrade the flux operators from 3rd/4th order
@@ -5909,7 +5909,7 @@ ELSE IF (horz_order == 2 ) THEN
 
       ENDDO
 
- ELSE IF (vert_order == 5) THEN    
+ ELSE IF (vert_order == 5 .or. vert_order == 7 .or. vert_order == 9) THEN    
 
       DO j = j_start, j_end
 
@@ -6502,7 +6502,7 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
 !--- end of 6th order horizontal flux calculation
 
-    ELSE IF( horz_order == 5 ) THEN
+    ELSE IF( horz_order == 5 .or. horz_order == 7 .or. horz_order == 9 ) THEN
 
    IF( config_flags%periodic_x   .or. &
        config_flags%symmetric_xs .or. &
@@ -7450,7 +7450,7 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
       ENDDO
 
-    ELSE IF (vert_order == 5) THEN    
+    ELSE IF (vert_order == 5 .or. vert_order == 7 .or. vert_order == 9) THEN    
 
       DO j = j_start, j_end
 
@@ -7954,10 +7954,16 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
    integer kt,kb
    
     
-    real               :: qim2, qim1, qi, qip1, qip2
-    double precision               :: beta0, beta1, beta2, f0, f1, f2, wi0, wi1, wi2, sumwk
-    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-28
-    integer, parameter :: pw = 2
+    integer :: klev(4), loop,n
+    real               :: qim4, qim3, qim2, qim1, qi, qip1, qip2, qip3, qip4
+    double precision   :: beta0, beta1, beta2, beta3, beta4
+    double precision   ::  f0, f1, f2, f3, f4, wi0, wi1, wi2, wi3, wi4, sumwk, suma, tau5
+    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-40
+    double precision, parameter    :: c04 = 1.d0/35.d0, c14 = 12.d0/35.d0, c24 = 18.d0/35.d0, c34 = 4.d0/35.d0
+    double precision, parameter    :: c05 = 1.d0/126.d0, c15 = 10.d0/63.d0, c25 = 10.d0/21.d0
+    double precision, parameter    :: c35 = 20.d0/63.d0, c45 = 5.d0/126.d0
+    integer, parameter :: pw = 2, pw7 = 2, pw9 = 2
+    logical, parameter :: wenoz = .true.
 
 
 ! definition of flux operators, 3rd, 4th, 5th or 6th order
@@ -7989,15 +7995,30 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
 ! set order for the advection schemes
 
   ktf=MIN(kte,kde-1)
-  horz_order = 5 ! config_flags%h_sca_adv_order
-  vert_order = 5 ! config_flags%v_sca_adv_order
+  
+  IF ( config_flags%h_sca_adv_order <= 6 ) THEN  
+    horz_order = 5 
+  ELSEIF (config_flags%h_sca_adv_order <= 8 ) THEN
+    horz_order = 7 
+  ELSEIF (config_flags%h_sca_adv_order <= 10 ) THEN
+    horz_order = 9 
+  ENDIF
+
+  IF ( config_flags%v_sca_adv_order <= 6 ) THEN  
+    vert_order = 5 
+  ELSEIF ( config_flags%v_sca_adv_order <= 8 ) THEN  
+    vert_order = 7 
+  ELSEIF ( config_flags%v_sca_adv_order <= 10 ) THEN  
+    vert_order = 9 
+  ENDIF
 
 !  begin with horizontal flux divergence
 !  here is the choice of flux operators
 
 
 
-  IF( horz_order == 5 ) THEN
+ ! IF( horz_order == 5 ) THEN
+  IF( horz_order == 5 .or. horz_order == 7 .or. horz_order == 9 ) THEN
 
 !  determine boundary mods for flux operators
 !  We degrade the flux operators from 3rd/4th order
@@ -8052,12 +8073,12 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
 
       IF(degrade_ys) then
         j_start = MAX(jts,jds+1)
-        j_start_f = jds+3
+        j_start_f = jds+3 + (horz_order - 5)/2
       ENDIF
 
       IF(degrade_ye) then
         j_end = MIN(jte,jde-2)
-        j_end_f = jde-3
+        j_end_f = jde-3 - (horz_order - 5)/2
       ENDIF
 
       IF(config_flags%polar) j_end = MIN(jte,jde-1)
@@ -8070,6 +8091,249 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
      j_loop_y_flux_5 : DO j = j_start, j_end+1
 
       IF( (j >= j_start_f ) .and. (j <= j_end_f) ) THEN ! use full stencil
+
+        IF ( horz_order == 5 ) THEN 
+        
+        DO k=kts,ktf
+        DO i = i_start, i_end
+!          vel = rv(i,k,j)
+          vel = 0.5*( rv(i,k,j) + rv(i-is,k-ks,j-js) )
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip2 = field(i,k,j+1)
+            qip1 = field(i,k,j  )
+            qi   = field(i,k,j-1)
+            qim1 = field(i,k,j-2)
+            qim2 = field(i,k,j-3)
+          ELSE
+            qip2 = field(i,k,j-2)
+            qip1 = field(i,k,j-1)
+            qi   = field(i,k,j  )
+            qim1 = field(i,k,j+1)
+            qim2 = field(i,k,j+2)
+         ENDIF
+    
+         f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+         f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+         f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+    
+         beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+         beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+         beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2
+    
+          fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+!          fqy( i, k, jp1 ) = vel*flux5(                                &
+!                  field(i,k,j-3), field(i,k,j-2), field(i,k,j-1),       &
+!                  field(i,k,j  ), field(i,k,j+1), field(i,k,j+2),  vel )
+        ENDDO
+        ENDDO
+        
+        
+        ELSEIF ( horz_order == 7 ) THEN 
+
+        DO k=kts,ktf
+        DO i = i_start, i_end
+!          vel = rv(i,k,j)
+          vel = 0.5*( rv(i,k,j) + rv(i-is,k-ks,j-js) )
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = field(i,k,j+2)
+            qip2 = field(i,k,j+1)
+            qip1 = field(i,k,j  )
+            qi   = field(i,k,j-1)
+            qim1 = field(i,k,j-2)
+            qim2 = field(i,k,j-3)
+            qim3 = field(i,k,j-4)
+          ELSE
+            qip3 = field(i,k,j-3)
+            qip2 = field(i,k,j-2)
+            qip1 = field(i,k,j-1)
+            qi   = field(i,k,j  )
+            qim1 = field(i,k,j+1)
+            qim2 = field(i,k,j+2)
+            qim3 = field(i,k,j+3)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+    
+          fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+
+!          fqy( i, k, jp1 ) = vel*flux5(                                &
+!                  field(i,k,j-3), field(i,k,j-2), field(i,k,j-1),       &
+!                  field(i,k,j  ), field(i,k,j+1), field(i,k,j+2),  vel )
+        ENDDO
+        ENDDO
+
+
+        ELSEIF ( horz_order == 9 ) THEN 
+
+        DO k=kts,ktf
+        DO i = i_start, i_end
+!          vel = rv(i,k,j)
+          vel = 0.5*( rv(i,k,j) + rv(i-is,k-ks,j-js) )
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = field(i,k,j+3)
+            qip3 = field(i,k,j+2)
+            qip2 = field(i,k,j+1)
+            qip1 = field(i,k,j  )
+            qi   = field(i,k,j-1)
+            qim1 = field(i,k,j-2)
+            qim2 = field(i,k,j-3)
+            qim3 = field(i,k,j-4)
+            qim4 = field(i,k,j-5)
+          ELSE
+            qip4 = field(i,k,j-4)
+            qip3 = field(i,k,j-3)
+            qip2 = field(i,k,j-2)
+            qip1 = field(i,k,j-1)
+            qi   = field(i,k,j  )
+            qim1 = field(i,k,j+1)
+            qim2 = field(i,k,j+2)
+            qim3 = field(i,k,j+3)
+            qim4 = field(i,k,j+4)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+          fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+        ENDDO
+        ENDDO
+        
+        
+        ENDIF
+
+
+      ELSE IF ( j == jds+1 ) THEN   ! 2nd order flux next to south boundary
+
+            DO k=kts,ktf
+            DO i = i_start, i_end
+              fqy(i,k, jp1) = 0.5*rv(i,k,j)*          &
+!              fqy(i,k, jp1) = 0.5*0.5*( rv(i,k,j) + rv(i-is,k-ks,j-js) )*          &
+                     (field(i,k,j)+field(i,k,j-1))
+
+            ENDDO
+            ENDDO
+
+     ELSE IF  ( j == jds+2 ) THEN  ! third or 4th order flux 2 in from south boundary
+
+            DO k=kts,ktf
+            DO i = i_start, i_end
+!              vel = 0.5*( rv(i,k,j) + rv(i-is,k-ks,j-js) )
+              vel = rv(i,k,j)
+              fqy( i, k, jp1 ) = vel*flux3(              &
+                   field(i,k,j-2),field(i,k,j-1),field(i,k,j),field(i,k,j+1),vel )
+            ENDDO
+            ENDDO
+
+     ELSE IF  ( (horz_order == 7 .and. j == jds+3) .or. ( horz_order == 9 .and. (j == jds+3 .or. j == jds+4 )) &
+                  .or.(horz_order == 7 .and. j == jde-3) .or. ( horz_order == 9 .and. (j == jde-3 .or. j == jde-4 ))) THEN  ! tth order flux  in from south boundary
 
         DO k=kts,ktf
         DO i = i_start, i_end
@@ -8098,9 +8362,21 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
@@ -8113,27 +8389,6 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
         ENDDO
 
 
-      ELSE IF ( j == jds+1 ) THEN   ! 2nd order flux next to south boundary
-
-            DO k=kts,ktf
-            DO i = i_start, i_end
-              fqy(i,k, jp1) = 0.5*rv(i,k,j)*          &
-!              fqy(i,k, jp1) = 0.5*0.5*( rv(i,k,j) + rv(i-is,k-ks,j-js) )*          &
-                     (field(i,k,j)+field(i,k,j-1))
-
-            ENDDO
-            ENDDO
-
-     ELSE IF  ( j == jds+2 ) THEN  ! third of 4th order flux 2 in from south boundary
-
-            DO k=kts,ktf
-            DO i = i_start, i_end
-!              vel = 0.5*( rv(i,k,j) + rv(i-is,k-ks,j-js) )
-              vel = rv(i,k,j)
-              fqy( i, k, jp1 ) = vel*flux3(              &
-                   field(i,k,j-2),field(i,k,j-1),field(i,k,j),field(i,k,j+1),vel )
-            ENDDO
-            ENDDO
 
      ELSE IF ( j == jde-1 ) THEN  ! 2nd order flux next to north boundary
 
@@ -8251,12 +8506,12 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
       IF(degrade_xs) then
         i_start = MAX(ids+1,its)
 !        i_start_f = i_start+2
-        i_start_f = MIN(i_start+2,ids+3)
+        i_start_f = MIN(i_start+2,ids+3 ) + (horz_order - 5)/2
       ENDIF
 
       IF(degrade_xe) then
         i_end = MIN(ide-2,ite)
-        i_end_f = ide-3
+        i_end_f = ide-3 - (horz_order - 5)/2
       ENDIF
 
 !  compute fluxes
@@ -8264,6 +8519,8 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
       DO j = j_start, j_end
 
 !  5th or 6th order flux
+
+        IF ( horz_order == 5 ) THEN 
 
         DO k=kts,ktf
         DO i = i_start_f, i_end_f
@@ -8293,9 +8550,21 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
@@ -8308,6 +8577,163 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
         ENDDO
         ENDDO
 
+        ELSEIF ( horz_order == 7 ) THEN 
+        
+        DO k=kts,ktf
+        DO i = i_start_f, i_end_f
+!          vel = ru(i,k,j)
+          vel = 0.5*( ru(i,k,j) + ru(i-is,k-ks,j-js) )
+
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = field(i+2,k,j)
+            qip2 = field(i+1,k,j)
+            qip1 = field(i,  k,j)
+            qi   = field(i-1,k,j)
+            qim1 = field(i-2,k,j)
+            qim2 = field(i-3,k,j)
+            qim3 = field(i-4,k,j)
+          ELSE
+            qip3 = field(i-3,k,j)
+            qip2 = field(i-2,k,j)
+            qip1 = field(i-1,k,j)
+            qi   = field(i,  k,j)
+            qim1 = field(i+1,k,j)
+            qim2 = field(i+2,k,j)
+            qim3 = field(i+3,k,j)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+        
+         fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+
+        ENDDO
+        ENDDO
+        
+        ELSEIF ( horz_order == 9 ) THEN 
+        
+        DO k=kts,ktf
+        DO i = i_start_f, i_end_f
+!          vel = ru(i,k,j)
+          vel = 0.5*( ru(i,k,j) + ru(i-is,k-ks,j-js) )
+
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = field(i+3,k,j)
+            qip3 = field(i+2,k,j)
+            qip2 = field(i+1,k,j)
+            qip1 = field(i,  k,j)
+            qi   = field(i-1,k,j)
+            qim1 = field(i-2,k,j)
+            qim2 = field(i-3,k,j)
+            qim3 = field(i-4,k,j)
+            qim4 = field(i-5,k,j)
+          ELSE
+            qip4 = field(i-4,k,j)
+            qip3 = field(i-3,k,j)
+            qip2 = field(i-2,k,j)
+            qip1 = field(i-1,k,j)
+            qi   = field(i,  k,j)
+            qim1 = field(i+1,k,j)
+            qim2 = field(i+2,k,j)
+            qim3 = field(i+3,k,j)
+            qim4 = field(i+4,k,j)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+         fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+        ENDDO
+        ENDDO
+
+        ENDIF
 !  lower order fluxes close to boundaries (if not periodic or symmetric)
 
         IF( degrade_xs ) THEN
@@ -8329,6 +8755,59 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
                                               vel                     )
               ENDDO
             END IF
+
+            IF ( ( horz_order == 7 .and. i == ids + 3 ) .or. ( horz_order == 9 .and. ( i == ids + 3 .or. i == ids + 4 ) ) ) THEN
+
+             DO k=kts,ktf
+
+                vel = 0.5*( ru(i,k,j) + ru(i-is,k-ks,j-js) )
+      
+      
+               IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+                  qip2 = field(i+1,k,j)
+                  qip1 = field(i,  k,j)
+                  qi   = field(i-1,k,j)
+                  qim1 = field(i-2,k,j)
+                  qim2 = field(i-3,k,j)
+                ELSE
+                  qip2 = field(i-2,k,j)
+                  qip1 = field(i-1,k,j)
+                  qi   = field(i,  k,j)
+                  qim1 = field(i+1,k,j)
+                  qim2 = field(i+2,k,j)
+               ENDIF
+          
+               f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+               f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+               f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+          
+               beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+               beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+               beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+          
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+          
+               sumwk = wi0 + wi1 + wi2
+          
+               fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+            ENDDO
+          
+           ENDIF
 
           ENDDO
 
@@ -8352,6 +8831,59 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
                                        field(i  ,k,j), field(i+1,k,j),  &
                                        vel                             )
              ENDDO
+           ENDIF
+
+            IF ( ( horz_order == 7 .and. i == ide - 3 ) .or. ( horz_order == 9 .and. ( i == ide - 3 .or. i == ide - 4 ) ) ) THEN
+
+             DO k=kts,ktf
+
+                vel = 0.5*( ru(i,k,j) + ru(i-is,k-ks,j-js) )
+      
+      
+               IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+                  qip2 = field(i+1,k,j)
+                  qip1 = field(i,  k,j)
+                  qi   = field(i-1,k,j)
+                  qim1 = field(i-2,k,j)
+                  qim2 = field(i-3,k,j)
+                ELSE
+                  qip2 = field(i-2,k,j)
+                  qip1 = field(i-1,k,j)
+                  qi   = field(i,  k,j)
+                  qim1 = field(i+1,k,j)
+                  qim2 = field(i+2,k,j)
+               ENDIF
+          
+               f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+               f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+               f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+          
+               beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+               beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+               beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+          
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+          
+               sumwk = wi0 + wi1 + wi2
+          
+               fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+            ENDDO
+          
            ENDIF
 
          ENDDO
@@ -8379,7 +8911,7 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
       ENDDO
 
 
-   ENDIF
+   ENDIF ! horz_order == 5 .or. horz_order == 7 .or. horz_order == 9 
    
 
 !  pick up the rest of the horizontal radiation boundary conditions.
@@ -8477,6 +9009,8 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
 
       DO j = j_start, j_end
 
+         IF ( vert_order == 5 ) THEN
+         
          DO k=kts+3,ktf-2
          DO i = i_start, i_end
 !           vel = rom(i,k,j)
@@ -8504,19 +9038,185 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
           vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
 
-!           vflux(i,k) = vel*flux5(                                 &
-!                   field(i,k-3,j), field(i,k-2,j), field(i,k-1,j),       &
-!                   field(i,k  ,j), field(i,k+1,j), field(i,k+2,j),  -vel )
          ENDDO
          ENDDO
+
+         ELSEIF ( vert_order == 7 ) THEN
+
+         DO k=kts+4,ktf-3
+         DO i = i_start, i_end
+!           vel = rom(i,k,j)
+           vel = 0.5*( rom(i,k,j) + rom(i-is,k-ks,j-js) )
+
+         IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = field(i,k+2,j)
+            qip2 = field(i,k+1,j)
+            qip1 = field(i,k  ,j)
+            qi   = field(i,k-1,j)
+            qim1 = field(i,k-2,j)
+            qim2 = field(i,k-3,j)
+            qim3 = field(i,k-4,j)
+          ELSE
+            qip3 = field(i,k-3,j)
+            qip2 = field(i,k-2,j)
+            qip1 = field(i,k-1,j)
+            qi   = field(i,k  ,j)
+            qim1 = field(i,k+1,j)
+            qim2 = field(i,k+2,j)
+            qim3 = field(i,k+3,j)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+        
+         vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+    
+         ENDDO
+         ENDDO
+
+         ELSEIF ( vert_order == 9 ) THEN
+
+         DO k=kts+5,ktf-4
+         DO i = i_start, i_end
+!           vel = rom(i,k,j)
+           vel = 0.5*( rom(i,k,j) + rom(i-is,k-ks,j-js) )
+
+         IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = field(i,k+3,j)
+            qip3 = field(i,k+2,j)
+            qip2 = field(i,k+1,j)
+            qip1 = field(i,k  ,j)
+            qi   = field(i,k-1,j)
+            qim1 = field(i,k-2,j)
+            qim2 = field(i,k-3,j)
+            qim3 = field(i,k-4,j)
+            qim4 = field(i,k-5,j)
+          ELSE
+            qip4 = field(i,k-4,j)
+            qip3 = field(i,k-3,j)
+            qip2 = field(i,k-2,j)
+            qip1 = field(i,k-1,j)
+            qi   = field(i,k  ,j)
+            qim1 = field(i,k+1,j)
+            qim2 = field(i,k+2,j)
+            qim3 = field(i,k+3,j)
+            qim4 = field(i,k+4,j)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+         vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+         ENDDO
+         ENDDO
+         
+         
+         ENDIF
 
          DO i = i_start, i_end
 
@@ -8536,6 +9236,77 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
 
            k=ktf
            vflux(i,k)=rom(i,k,j)*(fzm(k)*field(i,k,j)+fzp(k)*field(i,k-1,j))
+           
+           IF ( vert_order == 7 .or. vert_order == 9 ) THEN
+           
+             IF ( vert_order == 7 ) THEN
+               loop = 2
+               klev(1) = kts+3
+               klev(2) = ktf-2
+             ELSE
+               loop = 4
+               klev(1) = kts+3
+               klev(2) = ktf+4
+               klev(3) = ktf-3
+               klev(4) = ktf-2
+             ENDIF
+              
+             DO n = 1,loop
+             
+             k = klev(n)
+             
+               vel = 0.5*( rom(i,k,j) + rom(i-is,k-ks,j-js) )
+      
+               IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+                  qip2 = field(i,k+1,j)
+                  qip1 = field(i,k  ,j)
+                  qi   = field(i,k-1,j)
+                  qim1 = field(i,k-2,j)
+                  qim2 = field(i,k-3,j)
+                ELSE
+                  qip2 = field(i,k-2,j)
+                  qip1 = field(i,k-1,j)
+                  qi   = field(i,k  ,j)
+                  qim1 = field(i,k+1,j)
+                  qim2 = field(i,k+2,j)
+               ENDIF
+          
+               f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+               f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+               f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+          
+               beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+               beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+               beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+          
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+          
+               sumwk = wi0 + wi1 + wi2
+          
+                vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+             
+             
+             ENDDO
+           
+           
+           ENDIF
+           
+           
+           
          ENDDO
 
          DO k=kts,ktf
@@ -8627,6 +9398,8 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
    INTEGER :: i_start_f, i_end_f, j_start_f, j_end_f
    INTEGER :: jmin, jmax, jp, jm, imin, imax
 
+   INTEGER , PARAMETER :: is=0, js=0, ks=0
+
    REAL    :: mrdx, mrdy, ub, vb, uw, vw, mu
 
 !  storage for high and low order fluxes
@@ -8643,18 +9416,23 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
    
    REAL,DIMENSION( its-1:ite+2, kts:kte, jts-1:jte+2  ) :: flux_out, ph_low
    REAL :: scale
-   REAL, PARAMETER :: eps=1.e-20
+   REAL, PARAMETER :: eps0=1.e-20
 
     real            :: dir, vv
     real            :: ue,vs,vn,wb,wt
     real, parameter :: f30 =  7./12., f31 = 1./12.
     real, parameter :: f50 = 37./60., f51 = 2./15., f52 = 1./60.
 
-    real               :: qim2, qim1, qi, qip1, qip2
-    double precision               :: beta0, beta1, beta2, f0, f1, f2, wi0, wi1, wi2, sumwk
-    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps1=1.0d-28
-    integer, parameter :: pw = 2
-
+    integer :: klev(4), loop,n
+    real               :: qim4, qim3, qim2, qim1, qi, qip1, qip2, qip3, qip4
+    double precision   :: beta0, beta1, beta2, beta3, beta4
+    double precision   ::  f0, f1, f2, f3, f4, wi0, wi1, wi2, wi3, wi4, sumwk, suma, tau5
+    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-40
+    double precision, parameter    :: c04 = 1.d0/35.d0, c14 = 12.d0/35.d0, c24 = 18.d0/35.d0, c34 = 4.d0/35.d0
+    double precision, parameter    :: c05 = 1.d0/126.d0, c15 = 10.d0/63.d0, c25 = 10.d0/21.d0
+    double precision, parameter    :: c35 = 20.d0/63.d0, c45 = 5.d0/126.d0
+    integer, parameter :: pw = 2, pw7 = 2, pw9 = 2
+    logical, parameter :: wenoz = .true.
 
 ! definition of flux operators, 3rd, 4th, 5th or 6th order
 
@@ -8703,8 +9481,28 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
     END IF
 
   ktf=MIN(kte,kde-1)
-  horz_order = config_flags%h_sca_adv_order
-  vert_order = config_flags%v_sca_adv_order
+!  horz_order = config_flags%h_sca_adv_order
+!  vert_order = config_flags%v_sca_adv_order
+
+  IF ( config_flags%h_sca_adv_order <= 6 ) THEN  
+    horz_order = 5 
+  ELSEIF (config_flags%h_sca_adv_order <= 8 ) THEN
+    horz_order = 7 
+  ELSEIF (config_flags%h_sca_adv_order <= 10 ) THEN
+    horz_order = 9 
+  ENDIF
+
+  IF ( config_flags%v_sca_adv_order <= 6 ) THEN  
+    vert_order = 5 
+  ELSEIF ( config_flags%v_sca_adv_order <= 8 ) THEN  
+    vert_order = 7 
+  ELSEIF ( config_flags%v_sca_adv_order <= 10 ) THEN  
+    vert_order = 9 
+  ENDIF
+
+
+ ! IF( horz_order == 5 ) THEN
+!  IF( horz_order == 5 .or. horz_order == 7 .or. horz_order == 9 ) THEN
 
 !  determine boundary mods for flux operators
 !  We degrade the flux operators from 3rd/4th order
@@ -8721,10 +9519,6 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 !  begin with horizontal flux divergence
 !  here is the choice of flux operators
 
-
-!  horizontal_order_test : IF( horz_order == 6 ) THEN
-
-!    ELSE IF( horz_order == 5 ) THEN
 
    IF( config_flags%periodic_x   .or. &
        config_flags%symmetric_xs .or. &
@@ -8760,12 +9554,12 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 
       IF(degrade_ys) then
         j_start = MAX(jts-1,jds+1)
-        j_start_f = jds+3
+        j_start_f = jds+3 + (horz_order - 5)/2
       ENDIF
 
       IF(degrade_ye) then
         j_end = MIN(jte+1,jde-2)
-        j_end_f = jde-3
+        j_end_f = jde-3 - (horz_order - 5)/2
       ENDIF
 
 !  compute fluxes, 5th order
@@ -8773,6 +9567,235 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
       j_loop_y_flux_5 : DO j = j_start, j_end+1
 
       IF( (j >= j_start_f ) .and. (j <= j_end_f) ) THEN ! use full stencil
+
+        IF ( horz_order == 5 ) THEN 
+        
+        DO k=kts,ktf
+        DO i = i_start, i_end
+
+          dy = 2./(msftx(i,j)+msftx(i,j-1))/rdy  ! ADT eqn 48 d/dy
+          mu = 0.5*((c1(k)*mut(i,j)+c2(k))+(c1(k)*mut(i,j-1)+c2(k)))
+          vel = rv(i,k,j)
+          cr = vel*dt/dy/mu
+          fqyl(i,k,j) = mu*(dy/dt)*flux_upwind(field_old(i,k,j-1), field_old(i,k,j  ), cr)
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip2 = field(i,k,j+1)
+            qip1 = field(i,k,j  )
+            qi   = field(i,k,j-1)
+            qim1 = field(i,k,j-2)
+            qim2 = field(i,k,j-3)
+          ELSE
+            qip2 = field(i,k,j-2)
+            qip1 = field(i,k,j-1)
+            qi   = field(i,k,j  )
+            qim1 = field(i,k,j+1)
+            qim2 = field(i,k,j+2)
+         ENDIF
+    
+         f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+         f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+         f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+    
+         beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+         beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+         beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2
+    
+          fqy( i, k, j ) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+          fqy(i,k,j) = fqy(i,k,j) - fqyl(i,k,j)
+
+        ENDDO
+        ENDDO
+
+        ELSEIF ( horz_order == 7 ) THEN 
+        
+        DO k=kts,ktf
+        DO i = i_start, i_end
+
+          dy = 2./(msftx(i,j)+msftx(i,j-1))/rdy  ! ADT eqn 48 d/dy
+          mu = 0.5*((c1(k)*mut(i,j)+c2(k))+(c1(k)*mut(i,j-1)+c2(k)))
+          vel = rv(i,k,j)
+          cr = vel*dt/dy/mu
+          fqyl(i,k,j) = mu*(dy/dt)*flux_upwind(field_old(i,k,j-1), field_old(i,k,j  ), cr)
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = field(i,k,j+2)
+            qip2 = field(i,k,j+1)
+            qip1 = field(i,k,j  )
+            qi   = field(i,k,j-1)
+            qim1 = field(i,k,j-2)
+            qim2 = field(i,k,j-3)
+            qim3 = field(i,k,j-4)
+          ELSE
+            qip3 = field(i,k,j-3)
+            qip2 = field(i,k,j-2)
+            qip1 = field(i,k,j-1)
+            qi   = field(i,k,j  )
+            qim1 = field(i,k,j+1)
+            qim2 = field(i,k,j+2)
+            qim3 = field(i,k,j+3)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+    
+          fqy( i, k, j ) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+
+          fqy(i,k,j) = fqy(i,k,j) - fqyl(i,k,j)
+
+        ENDDO
+        ENDDO
+        
+        ELSEIF ( horz_order == 9 ) THEN 
+        
+        DO k=kts,ktf
+        DO i = i_start, i_end
+
+          dy = 2./(msftx(i,j)+msftx(i,j-1))/rdy  ! ADT eqn 48 d/dy
+          mu = 0.5*((c1(k)*mut(i,j)+c2(k))+(c1(k)*mut(i,j-1)+c2(k)))
+          vel = rv(i,k,j)
+          cr = vel*dt/dy/mu
+          fqyl(i,k,j) = mu*(dy/dt)*flux_upwind(field_old(i,k,j-1), field_old(i,k,j  ), cr)
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = field(i,k,j+3)
+            qip3 = field(i,k,j+2)
+            qip2 = field(i,k,j+1)
+            qip1 = field(i,k,j  )
+            qi   = field(i,k,j-1)
+            qim1 = field(i,k,j-2)
+            qim2 = field(i,k,j-3)
+            qim3 = field(i,k,j-4)
+            qim4 = field(i,k,j-5)
+          ELSE
+            qip4 = field(i,k,j-4)
+            qip3 = field(i,k,j-3)
+            qip2 = field(i,k,j-2)
+            qip1 = field(i,k,j-1)
+            qi   = field(i,k,j  )
+            qim1 = field(i,k,j+1)
+            qim2 = field(i,k,j+2)
+            qim3 = field(i,k,j+3)
+            qim4 = field(i,k,j+4)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+          fqy( i, k, j ) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+          fqy(i,k,j) = fqy(i,k,j) - fqyl(i,k,j)
+
+        ENDDO
+        ENDDO
+        
+        ENDIF
+
+     ELSE IF  ( (horz_order == 7 .and. j == jds+3) .or. ( horz_order == 9 .and. (j == jds+3 .or. j == jds+4 )) &
+                  .or.(horz_order == 7 .and. j == jde-3) .or. ( horz_order == 9 .and. (j == jde-3 .or. j == jde-4 ))) THEN  ! tth order flux  in from south boundary
 
         DO k=kts,ktf
         DO i = i_start, i_end
@@ -8805,22 +9828,31 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
-         wi0 = gi0 / (eps1 + beta0)**pw
-         wi1 = gi1 / (eps1 + beta1)**pw
-         wi2 = gi2 / (eps1 + beta2)**pw
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
           fqy( i, k, j ) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
 
-!          fqy( i, k, j  ) = vel*flux5(                                  &
-!                  field(i,k,j-3), field(i,k,j-2), field(i,k,j-1),       &
-!                  field(i,k,j  ), field(i,k,j+1), field(i,k,j+2),  vel )
-
           fqy(i,k,j) = fqy(i,k,j) - fqyl(i,k,j)
 
         ENDDO
         ENDDO
+
 
       ELSE IF ( j == jds+1 ) THEN   ! 2nd order flux next to south boundary
 
@@ -8921,12 +9953,12 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 
       IF(degrade_xs) then
         i_start = MAX(ids+1,its-1)
-        i_start_f = ids+3
+        i_start_f = ids+3 + (horz_order - 5)/2
       ENDIF
 
       IF(degrade_xe) then
         i_end = MIN(ide-2,ite+1)
-        i_end_f = ide-3
+        i_end_f = ide-3 - (horz_order - 5)/2
       ENDIF
 
 !  compute fluxes
@@ -8934,6 +9966,8 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
       DO j = j_start, j_end
 
 !  5th order flux
+
+        IF ( horz_order == 5 ) THEN 
 
         DO k=kts,ktf
         DO i = i_start_f, i_end_f
@@ -8967,22 +10001,200 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
-         wi0 = gi0 / (eps1 + beta0)**pw
-         wi1 = gi1 / (eps1 + beta1)**pw
-         wi2 = gi2 / (eps1 + beta2)**pw
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
          fqx(i,k,j) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
 
-!          fqx( i,k,j ) = vel*flux5( field(i-3,k,j), field(i-2,k,j),  &
-!                                         field(i-1,k,j), field(i  ,k,j),  &
-!                                         field(i+1,k,j), field(i+2,k,j),  &
-!                                         vel                             )
-          fqx(i,k,j) = fqx(i,k,j) - fqxl(i,k,j)
+         fqx(i,k,j) = fqx(i,k,j) - fqxl(i,k,j)
 
         ENDDO
         ENDDO
+
+        ELSEIF ( horz_order == 7 ) THEN 
+
+        DO k=kts,ktf
+        DO i = i_start_f, i_end_f
+
+          dx = 2./(msfty(i,j)+msfty(i-1,j))/rdx  ! ADT eqn 48 d/dx
+          mu = 0.5*((c1(k)*mut(i,j)+c2(k))+(c1(k)*mut(i-1,j)+c2(k)))
+          vel = ru(i,k,j)
+          cr = vel*dt/dx/mu
+          fqxl(i,k,j) = mu*(dx/dt)*flux_upwind(field_old(i-1,k,j), field_old(i,k,j  ), cr)
+
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = field(i+2,k,j)
+            qip2 = field(i+1,k,j)
+            qip1 = field(i,  k,j)
+            qi   = field(i-1,k,j)
+            qim1 = field(i-2,k,j)
+            qim2 = field(i-3,k,j)
+            qim3 = field(i-4,k,j)
+          ELSE
+            qip3 = field(i-3,k,j)
+            qip2 = field(i-2,k,j)
+            qip1 = field(i-1,k,j)
+            qi   = field(i,  k,j)
+            qim1 = field(i+1,k,j)
+            qim2 = field(i+2,k,j)
+            qim3 = field(i+3,k,j)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+        
+         fqx(i,k,j) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+
+         fqx(i,k,j) = fqx(i,k,j) - fqxl(i,k,j)
+
+        ENDDO
+        ENDDO
+
+        ELSEIF ( horz_order == 9 ) THEN 
+
+        DO k=kts,ktf
+        DO i = i_start_f, i_end_f
+
+          dx = 2./(msfty(i,j)+msfty(i-1,j))/rdx  ! ADT eqn 48 d/dx
+          mu = 0.5*((c1(k)*mut(i,j)+c2(k))+(c1(k)*mut(i-1,j)+c2(k)))
+          vel = ru(i,k,j)
+          cr = vel*dt/dx/mu
+          fqxl(i,k,j) = mu*(dx/dt)*flux_upwind(field_old(i-1,k,j), field_old(i,k,j  ), cr)
+
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = field(i+3,k,j)
+            qip3 = field(i+2,k,j)
+            qip2 = field(i+1,k,j)
+            qip1 = field(i,  k,j)
+            qi   = field(i-1,k,j)
+            qim1 = field(i-2,k,j)
+            qim2 = field(i-3,k,j)
+            qim3 = field(i-4,k,j)
+            qim4 = field(i-5,k,j)
+          ELSE
+            qip4 = field(i-4,k,j)
+            qip3 = field(i-3,k,j)
+            qip2 = field(i-2,k,j)
+            qip1 = field(i-1,k,j)
+            qi   = field(i,  k,j)
+            qim1 = field(i+1,k,j)
+            qim2 = field(i+2,k,j)
+            qim3 = field(i+3,k,j)
+            qim4 = field(i+4,k,j)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+         fqx(i,k,j) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+         fqx(i,k,j) = fqx(i,k,j) - fqxl(i,k,j)
+
+        ENDDO
+        ENDDO
+        
+        ENDIF
 
 !  lower order fluxes close to boundaries (if not periodic or symmetric)
 
@@ -9016,6 +10228,65 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
                 fqx(i,k,j) = fqx(i,k,j) - fqxl(i,k,j)
               ENDDO
             ENDIF
+
+            IF ( ( horz_order == 7 .and. i == ids + 3 ) .or. ( horz_order == 9 .and. ( i == ids + 3 .or. i == ids + 4 ) ) ) THEN
+
+             DO k=kts,ktf
+
+                dx = 2./(msfty(i,j)+msfty(i-1,j))/rdx  ! ADT eqn 48 d/dx
+                mu = 0.5*((c1(k)*mut(i,j)+c2(k))+(c1(k)*mut(i-1,j)+c2(k)))
+                vel = ru(i,k,j)
+                cr = vel*dt/dx/mu
+                fqxl(i,k,j) = mu*(dx/dt)*flux_upwind(field_old(i-1,k,j), field_old(i,k,j  ), cr)
+      
+      
+               IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+                  qip2 = field(i+1,k,j)
+                  qip1 = field(i,  k,j)
+                  qi   = field(i-1,k,j)
+                  qim1 = field(i-2,k,j)
+                  qim2 = field(i-3,k,j)
+                ELSE
+                  qip2 = field(i-2,k,j)
+                  qip1 = field(i-1,k,j)
+                  qi   = field(i,  k,j)
+                  qim1 = field(i+1,k,j)
+                  qim2 = field(i+2,k,j)
+               ENDIF
+          
+               f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+               f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+               f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+          
+               beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+               beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+               beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+          
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+          
+               sumwk = wi0 + wi1 + wi2
+          
+               fqx(i,k,j) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+      
+               fqx(i,k,j) = fqx(i,k,j) - fqxl(i,k,j)
+
+            ENDDO
+          
+           ENDIF
 
           ENDDO
 
@@ -9052,6 +10323,65 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
                 fqx(i,k,j) = fqx(i,k,j) - fqxl(i,k,j)
               ENDDO
             ENDIF
+
+            IF ( ( horz_order == 7 .and. i == ide - 3 ) .or. ( horz_order == 9 .and. ( i == ide - 3 .or. i == ide - 4 ) ) ) THEN
+
+             DO k=kts,ktf
+
+                dx = 2./(msfty(i,j)+msfty(i-1,j))/rdx  ! ADT eqn 48 d/dx
+                mu = 0.5*((c1(k)*mut(i,j)+c2(k))+(c1(k)*mut(i-1,j)+c2(k)))
+                vel = ru(i,k,j)
+                cr = vel*dt/dx/mu
+                fqxl(i,k,j) = mu*(dx/dt)*flux_upwind(field_old(i-1,k,j), field_old(i,k,j  ), cr)
+      
+      
+               IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+                  qip2 = field(i+1,k,j)
+                  qip1 = field(i,  k,j)
+                  qi   = field(i-1,k,j)
+                  qim1 = field(i-2,k,j)
+                  qim2 = field(i-3,k,j)
+                ELSE
+                  qip2 = field(i-2,k,j)
+                  qip1 = field(i-1,k,j)
+                  qi   = field(i,  k,j)
+                  qim1 = field(i+1,k,j)
+                  qim2 = field(i+2,k,j)
+               ENDIF
+          
+               f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+               f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+               f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+          
+               beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+               beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+               beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+          
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+          
+               sumwk = wi0 + wi1 + wi2
+          
+               fqx(i,k,j) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+      
+               fqx(i,k,j) = fqx(i,k,j) - fqxl(i,k,j)
+
+            ENDDO
+          
+           ENDIF
 
           ENDDO
 
@@ -9196,7 +10526,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 !    vert_order_test : IF (vert_order == 6) THEN    
 
 
-!    ELSE IF (vert_order == 5) THEN    
+!    ELSE IF (vert_order == 5 .or. vert_order == 7 .or. vert_order == 9) THEN    
 
       DO j = j_start, j_end
 
@@ -9206,6 +10536,8 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
            fqz(i,kde,j)  = 0.
            fqzl(i,kde,j) = 0.
          ENDDO
+
+         IF ( vert_order == 5 ) THEN
 
          DO k=kts+3,ktf-2
          DO i = i_start, i_end
@@ -9238,19 +10570,194 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
-         wi0 = gi0 / (eps1 + beta0)**pw
-         wi1 = gi1 / (eps1 + beta1)**pw
-         wi2 = gi2 / (eps1 + beta2)**pw
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
           fqz(i,k,j) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
 
-!           fqz(i,k,j) = vel*flux5( field(i,k-3,j), field(i,k-2,j), field(i,k-1,j),      &
-!                                   field(i,k  ,j), field(i,k+1,j), field(i,k+2,j),  -vel )
            fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
          ENDDO
          ENDDO
+
+         ELSEIF ( vert_order == 7 ) THEN
+
+         DO k=kts+4,ktf-3
+         DO i = i_start, i_end
+           dz = 2./(rdzw(k)+rdzw(k-1))
+           mu = 0.5*((c1(k)*mut(i,j)+c2(k))+(c1(k)*mut(i,j)+c2(k)))
+           vel = rom(i,k,j)
+           cr = vel*dt/dz/mu
+           fqzl(i,k,j) = mu*(dz/dt)*flux_upwind(field_old(i,k-1,j), field_old(i,k,j  ), cr)
+
+
+         IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = field(i,k+2,j)
+            qip2 = field(i,k+1,j)
+            qip1 = field(i,k  ,j)
+            qi   = field(i,k-1,j)
+            qim1 = field(i,k-2,j)
+            qim2 = field(i,k-3,j)
+            qim3 = field(i,k-4,j)
+          ELSE
+            qip3 = field(i,k-3,j)
+            qip2 = field(i,k-2,j)
+            qip1 = field(i,k-1,j)
+            qi   = field(i,k  ,j)
+            qim1 = field(i,k+1,j)
+            qim2 = field(i,k+2,j)
+            qim3 = field(i,k+3,j)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+        
+         fqx(i,k,j) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+
+           fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
+         ENDDO
+         ENDDO
+
+         ELSEIF ( vert_order == 9 ) THEN
+
+         DO k=kts+5,ktf-4
+         DO i = i_start, i_end
+           dz = 2./(rdzw(k)+rdzw(k-1))
+           mu = 0.5*((c1(k)*mut(i,j)+c2(k))+(c1(k)*mut(i,j)+c2(k)))
+           vel = rom(i,k,j)
+           cr = vel*dt/dz/mu
+           fqzl(i,k,j) = mu*(dz/dt)*flux_upwind(field_old(i,k-1,j), field_old(i,k,j  ), cr)
+
+         IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = field(i,k+3,j)
+            qip3 = field(i,k+2,j)
+            qip2 = field(i,k+1,j)
+            qip1 = field(i,k  ,j)
+            qi   = field(i,k-1,j)
+            qim1 = field(i,k-2,j)
+            qim2 = field(i,k-3,j)
+            qim3 = field(i,k-4,j)
+            qim4 = field(i,k-5,j)
+          ELSE
+            qip4 = field(i,k-4,j)
+            qip3 = field(i,k-3,j)
+            qip2 = field(i,k-2,j)
+            qip1 = field(i,k-1,j)
+            qi   = field(i,k  ,j)
+            qim1 = field(i,k+1,j)
+            qim2 = field(i,k+2,j)
+            qim3 = field(i,k+3,j)
+            qim4 = field(i,k+4,j)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+         fqx(i,k,j) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+           fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
+         ENDDO
+         ENDDO
+         
+         ENDIF
 
          DO i = i_start, i_end
 
@@ -9295,6 +10802,80 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
            fqzl(i,k,j) = mu*(dz/dt)*flux_upwind(field_old(i,k-1,j), field_old(i,k,j  ), cr)
            fqz(i,k,j)=rom(i,k,j)*(fzm(k)*field(i,k,j)+fzp(k)*field(i,k-1,j))
            fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
+
+           IF ( vert_order == 7 .or. vert_order == 9 ) THEN
+           
+             IF ( vert_order == 7 ) THEN
+               loop = 2
+               klev(1) = kts+3
+               klev(2) = ktf-2
+             ELSE
+               loop = 4
+               klev(1) = kts+3
+               klev(2) = ktf+4
+               klev(3) = ktf-3
+               klev(4) = ktf-2
+             ENDIF
+              
+             DO n = 1,loop
+             
+             k = klev(n)
+             
+                dz = 2./(rdzw(k)+rdzw(k-1))
+                mu = 0.5*((c1(k)*mut(i,j)+c2(k))+(c1(k)*mut(i,j)+c2(k)))
+                vel = rom(i,k,j)
+                cr = vel*dt/dz/mu
+                fqzl(i,k,j) = mu*(dz/dt)*flux_upwind(field_old(i,k-1,j), field_old(i,k,j  ), cr)
+     
+     
+              IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+                 qip2 = field(i,k+1,j)
+                 qip1 = field(i,k  ,j)
+                 qi   = field(i,k-1,j)
+                 qim1 = field(i,k-2,j)
+                 qim2 = field(i,k-3,j)
+               ELSE
+                 qip2 = field(i,k-2,j)
+                 qip1 = field(i,k-1,j)
+                 qi   = field(i,k  ,j)
+                 qim1 = field(i,k+1,j)
+                 qim2 = field(i,k+2,j)
+              ENDIF
+         
+              f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+              f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+              f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+         
+              beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+              beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+              beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+         
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+         
+              sumwk = wi0 + wi1 + wi2
+         
+               fqz(i,k,j) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+     
+                fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
+             
+             ENDDO
+           
+           
+           ENDIF
 
          ENDDO
 
@@ -9394,7 +10975,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 
      IF( flux_out(i,k,j) .gt. ph_low(i,k,j) ) THEN
 
-       scale = max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps))
+       scale = max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps0))
        IF( fqx (i+1,k,j) .gt. 0.) fqx(i+1,k,j) = scale*fqx(i+1,k,j)
        IF( fqx (i  ,k,j) .lt. 0.) fqx(i  ,k,j) = scale*fqx(i  ,k,j)
        IF( fqy (i,k,j+1) .gt. 0.) fqy(i,k,j+1) = scale*fqy(i,k,j+1)
@@ -9621,7 +11202,7 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 !  here is the choice of flux operators
 
 
-  horizontal_order_test : IF( horz_order == 5 ) THEN
+  horizontal_order_test : IF( horz_order == 5 .or. horz_order == 7 .or. horz_order == 9 ) THEN
 
 !  determine boundary mods for flux operators
 !  We degrade the flux operators from 3rd/4rth order
@@ -10166,7 +11747,7 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 
       ENDDO
 
-    ELSE IF (vert_order == 5) THEN
+    ELSE IF (vert_order == 5 .or. vert_order == 7 .or. vert_order == 9) THEN
 
       DO j = j_start, j_end
 
@@ -10887,6 +12468,8 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
    INTEGER :: jmin, jmax, jp, jm, imin, imax, im, ip
    INTEGER :: jp1, jp0, jtmp
 
+   INTEGER , PARAMETER :: is=0, js=1, ks=0
+
     real            :: dir, vv
     real            :: ue,vs,vn,wb,wt
     real, parameter :: f30 =  7./12., f31 = 1./12.
@@ -10896,11 +12479,16 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
    integer kt,kb
    
     
-    real               :: qim2, qim1, qi, qip1, qip2
-    double precision               :: beta0, beta1, beta2, f0, f1, f2, wi0, wi1, wi2, sumwk
-    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-18
-    integer, parameter :: pw = 2
-
+    integer :: klev(4), loop,n
+    real               :: qim4, qim3, qim2, qim1, qi, qip1, qip2, qip3, qip4
+    double precision   :: beta0, beta1, beta2, beta3, beta4
+    double precision   ::  f0, f1, f2, f3, f4, wi0, wi1, wi2, wi3, wi4, sumwk, suma, tau5
+    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-40
+    double precision, parameter    :: c04 = 1.d0/35.d0, c14 = 12.d0/35.d0, c24 = 18.d0/35.d0, c34 = 4.d0/35.d0
+    double precision, parameter    :: c05 = 1.d0/126.d0, c15 = 10.d0/63.d0, c25 = 10.d0/21.d0
+    double precision, parameter    :: c35 = 20.d0/63.d0, c45 = 5.d0/126.d0
+    integer, parameter :: pw = 2, pw7 = 2, pw9 = 2
+    logical, parameter :: wenoz = .true.
 
    INTEGER :: horz_order, vert_order
 
@@ -10943,8 +12531,24 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
 
 !  set order for vertical and horzontal flux operators
 
-   horz_order = config_flags%h_mom_adv_order
-   vert_order = config_flags%v_mom_adv_order
+!   horz_order = config_flags%h_mom_adv_order
+!   vert_order = config_flags%v_mom_adv_order
+
+  IF ( config_flags%h_mom_adv_order <= 6 ) THEN  
+    horz_order = 5 
+  ELSEIF (config_flags%h_mom_adv_order <= 8 ) THEN
+    horz_order = 7 
+  ELSEIF (config_flags%h_mom_adv_order <= 10 ) THEN
+    horz_order = 9 
+  ENDIF
+
+  IF ( config_flags%v_mom_adv_order <= 6 ) THEN  
+    vert_order = 5 
+  ELSEIF ( config_flags%v_mom_adv_order <= 8 ) THEN  
+    vert_order = 7 
+  ELSEIF ( config_flags%v_mom_adv_order <= 10 ) THEN  
+    vert_order = 9 
+  ENDIF
 
    ktf=MIN(kte,kde-1)
 
@@ -11004,12 +12608,12 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
 
       IF(degrade_ys) then
         j_start = MAX(jts,jds+1)
-        j_start_f = jds+3
+        j_start_f = jds+3 + (horz_order - 5)/2
       ENDIF
 
       IF(degrade_ye) then
         j_end = MIN(jte,jde-2)
-        j_end_f = jde-3
+        j_end_f = jde-3 - (horz_order - 5)/2
       ENDIF
 
       IF(config_flags%polar) j_end = MIN(jte,jde-1)
@@ -11023,8 +12627,11 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
 
       IF( (j >= j_start_f ) .and. (j <= j_end_f) ) THEN  ! use full stencil
 
+        IF ( horz_order == 5 ) THEN 
+
         DO k=kts,ktf
         DO i = i_start, i_end
+          
           vel = 0.5*(rv(i,k,j)+rv(i-1,k,j))
 
          IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
@@ -11049,19 +12656,187 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
           fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
 
-!          fqy( i, k, jp1 ) = vel*flux5(               &
-!                  u(i,k,j-3), u(i,k,j-2), u(i,k,j-1),       &
-!                  u(i,k,j  ), u(i,k,j+1), u(i,k,j+2),  vel )
         ENDDO
         ENDDO
+
+        ELSEIF ( horz_order == 7 ) THEN
+        
+        DO k=kts,ktf
+        DO i = i_start, i_end
+          
+          vel = 0.5*(rv(i,k,j)+rv(i-1,k,j))
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = u(i,k,j+2)
+            qip2 = u(i,k,j+1)
+            qip1 = u(i,k,j  )
+            qi   = u(i,k,j-1)
+            qim1 = u(i,k,j-2)
+            qim2 = u(i,k,j-3)
+            qim3 = u(i,k,j-4)
+          ELSE
+            qip3 = u(i,k,j-3)
+            qip2 = u(i,k,j-2)
+            qip1 = u(i,k,j-1)
+            qi   = u(i,k,j  )
+            qim1 = u(i,k,j+1)
+            qim2 = u(i,k,j+2)
+            qim3 = u(i,k,j+3)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+    
+          fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+    
+
+        ENDDO
+        ENDDO
+        
+        ELSEIF ( horz_order == 9 ) THEN
+        
+        DO k=kts,ktf
+        DO i = i_start, i_end
+          
+          vel = 0.5*(rv(i,k,j)+rv(i-1,k,j))
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = u(i,k,j+3)
+            qip3 = u(i,k,j+2)
+            qip2 = u(i,k,j+1)
+            qip1 = u(i,k,j  )
+            qi   = u(i,k,j-1)
+            qim1 = u(i,k,j-2)
+            qim2 = u(i,k,j-3)
+            qim3 = u(i,k,j-4)
+            qim4 = u(i,k,j-5)
+          ELSE
+            qip4 = u(i,k,j-4)
+            qip3 = u(i,k,j-3)
+            qip2 = u(i,k,j-2)
+            qip1 = u(i,k,j-1)
+            qi   = u(i,k,j  )
+            qim1 = u(i,k,j+1)
+            qim2 = u(i,k,j+2)
+            qim3 = u(i,k,j+3)
+            qim4 = u(i,k,j+4)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+          fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+    
+
+        ENDDO
+        ENDDO
+         
+        ENDIF
+
 
 !  we must be close to some boundary where we need to reduce the order of the stencil
 
@@ -11103,6 +12878,58 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
                    u(i,k,j),u(i,k,j+1),vel )
             ENDDO
             ENDDO
+
+     ELSE IF  ( (horz_order == 7 .and. j == jds+3) .or. ( horz_order == 9 .and. (j == jds+3 .or. j == jds+4 )) &
+                  .or.(horz_order == 7 .and. j == jde-3) .or. ( horz_order == 9 .and. (j == jde-3 .or. j == jde-4 ))) THEN  ! tth order flux  in from south boundary
+
+        DO k=kts,ktf
+        DO i = i_start, i_end
+          vel = 0.5*(rv(i,k,j)+rv(i-1,k,j))
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip2 = u(i,k,j+1)
+            qip1 = u(i,k,j  )
+            qi   = u(i,k,j-1)
+            qim1 = u(i,k,j-2)
+            qim2 = u(i,k,j-3)
+          ELSE
+            qip2 = u(i,k,j-2)
+            qip1 = u(i,k,j-1)
+            qi   = u(i,k,j  )
+            qim1 = u(i,k,j+1)
+            qim2 = u(i,k,j+2)
+         ENDIF
+    
+         f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+         f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+         f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+    
+         beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+         beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+         beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2
+    
+          fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+        ENDDO
+        ENDDO
 
       END IF
 
@@ -11163,11 +12990,12 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
       IF(degrade_xs) then
         i_start = MAX(ids+1,its)
         i_start_f = ids+3
+        i_start_f = MIN(i_start+2,ids+3 ) + (horz_order - 5)/2
       ENDIF
 
       IF(degrade_xe) then
         i_end = MIN(ide-1,ite)
-        i_end_f = ide-2
+        i_end_f = ide-2 - (horz_order - 5)/2
       ENDIF
 
 !  compute fluxes
@@ -11175,6 +13003,8 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
       DO j = j_start, j_end
 
 !  5th or 6th order flux
+
+        IF ( horz_order == 5 ) THEN 
 
         DO k=kts,ktf
         DO i = i_start_f, i_end_f
@@ -11202,20 +13032,133 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
          fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
 
-!          fqx( i,k ) = vel*flux5( u(i-3,k,j), u(i-2,k,j),  &
-!                                         u(i-1,k,j), u(i  ,k,j),  &
-!                                         u(i+1,k,j), u(i+2,k,j),  &
-!                                         vel                     )
         ENDDO
         ENDDO
+
+        ELSEIF ( horz_order == 7 ) THEN 
+
+        DO k=kts,ktf
+        DO i = i_start_f, i_end_f
+          vel = 0.5*(ru(i,k,j)+ru(i-1,k,j))
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip2 = u(i+1,k,j)
+            qip1 = u(i,  k,j)
+            qi   = u(i-1,k,j)
+            qim1 = u(i-2,k,j)
+            qim2 = u(i-3,k,j)
+          ELSE
+            qip2 = u(i-2,k,j)
+            qip1 = u(i-1,k,j)
+            qi   = u(i,  k,j)
+            qim1 = u(i+1,k,j)
+            qim2 = u(i+2,k,j)
+         ENDIF
+    
+         f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+         f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+         f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+    
+         beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+         beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+         beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2
+    
+         fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+        ENDDO
+        ENDDO
+
+        ELSEIF ( horz_order == 9 ) THEN 
+
+        DO k=kts,ktf
+        DO i = i_start_f, i_end_f
+          
+          vel = 0.5*(ru(i,k,j)+ru(i-1,k,j))
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip2 = u(i+1,k,j)
+            qip1 = u(i,  k,j)
+            qi   = u(i-1,k,j)
+            qim1 = u(i-2,k,j)
+            qim2 = u(i-3,k,j)
+          ELSE
+            qip2 = u(i-2,k,j)
+            qip1 = u(i-1,k,j)
+            qi   = u(i,  k,j)
+            qim1 = u(i+1,k,j)
+            qim2 = u(i+2,k,j)
+         ENDIF
+    
+         f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+         f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+         f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+    
+         beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+         beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+         beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2
+    
+         fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+        ENDDO
+        ENDDO
+        
+        ENDIF
 
 !  lower order fluxes close to boundaries (if not periodic or symmetric)
 !  specified uses upstream normal wind at boundaries
@@ -11240,6 +13183,62 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
                                            vel                     )
           ENDDO
 
+          DO i = ids+3,ids+4
+          
+          IF ( ( horz_order == 7 .and. i == ids + 3 ) .or. ( horz_order == 9 .and. ( i == ids + 3 .or. i == ids + 4 ) ) ) THEN
+
+            DO k=kts,ktf
+
+               vel = 0.5*(ru(i,k,j)+ru(i-1,k,j))
+     
+              IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+                 qip2 = u(i+1,k,j)
+                 qip1 = u(i,  k,j)
+                 qi   = u(i-1,k,j)
+                 qim1 = u(i-2,k,j)
+                 qim2 = u(i-3,k,j)
+               ELSE
+                 qip2 = u(i-2,k,j)
+                 qip1 = u(i-1,k,j)
+                 qi   = u(i,  k,j)
+                 qim1 = u(i+1,k,j)
+                 qim2 = u(i+2,k,j)
+              ENDIF
+         
+              f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+              f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+              f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+         
+              beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+              beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+              beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+         
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+         
+              sumwk = wi0 + wi1 + wi2
+         
+              fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+            ENDDO
+          
+           ENDIF
+           
+           ENDDO
+
         ENDIF
 
         IF( degrade_xe ) THEN
@@ -11261,6 +13260,63 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
                                          u(i  ,k,j), u(i+1,k,j),  &
                                          vel                     )
           ENDDO
+
+          DO i = ide-3,ide-2
+
+            IF ( ( horz_order == 7 .and. i == ide - 2 ) .or. ( horz_order == 9 .and. ( i == ide - 3 .or. i == ide - 2 ) ) ) THEN
+
+             DO k=kts,ktf
+
+               vel = 0.5*(ru(i,k,j)+ru(i-1,k,j))
+     
+              IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+                 qip2 = u(i+1,k,j)
+                 qip1 = u(i,  k,j)
+                 qi   = u(i-1,k,j)
+                 qim1 = u(i-2,k,j)
+                 qim2 = u(i-3,k,j)
+               ELSE
+                 qip2 = u(i-2,k,j)
+                 qip1 = u(i-1,k,j)
+                 qi   = u(i,  k,j)
+                 qim1 = u(i+1,k,j)
+                 qim2 = u(i+2,k,j)
+              ENDIF
+         
+              f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+              f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+              f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+         
+              beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+              beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+              beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+         
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+         
+              sumwk = wi0 + wi1 + wi2
+         
+              fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+            ENDDO
+          
+           ENDIF
+           
+           ENDDO
+
 
         ENDIF
 
@@ -11400,6 +13456,8 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
 
       DO j = j_start, j_end
 
+         IF (vert_order == 5) THEN
+         
          DO k=kts+3,ktf-2
          DO i = i_start, i_end
            vel=0.5*(rom(i-1,k,j)+rom(i,k,j))
@@ -11426,9 +13484,21 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
@@ -11439,6 +13509,160 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
 !                   u(i,k  ,j), u(i,k+1,j), u(i,k+2,j),  -vel )
          ENDDO
          ENDDO
+
+         ELSEIF (vert_order == 7) THEN
+         
+         DO k=kts+4,ktf-3
+         DO i = i_start, i_end
+           vel=0.5*(rom(i-1,k,j)+rom(i,k,j))
+
+         IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = u(i,k+2,j)
+            qip2 = u(i,k+1,j)
+            qip1 = u(i,k  ,j)
+            qi   = u(i,k-1,j)
+            qim1 = u(i,k-2,j)
+            qim2 = u(i,k-3,j)
+            qim3 = u(i,k-4,j)
+          ELSE
+            qip3 = u(i,k-3,j)
+            qip2 = u(i,k-2,j)
+            qip1 = u(i,k-1,j)
+            qi   = u(i,k  ,j)
+            qim1 = u(i,k+1,j)
+            qim2 = u(i,k+2,j)
+            qim3 = u(i,k+3,j)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+        
+         vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+
+         ENDDO
+         ENDDO
+
+         ELSEIF (vert_order == 9) THEN
+         
+         DO k=kts+5,ktf-4
+         DO i = i_start, i_end
+           vel=0.5*(rom(i-1,k,j)+rom(i,k,j))
+
+         IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = u(i,k+3,j)
+            qip3 = u(i,k+2,j)
+            qip2 = u(i,k+1,j)
+            qip1 = u(i,k  ,j)
+            qi   = u(i,k-1,j)
+            qim1 = u(i,k-2,j)
+            qim2 = u(i,k-3,j)
+            qim3 = u(i,k-4,j)
+            qim4 = u(i,k-5,j)
+          ELSE
+            qip4 = u(i,k-4,j)
+            qip3 = u(i,k-3,j)
+            qip2 = u(i,k-2,j)
+            qip1 = u(i,k-1,j)
+            qi   = u(i,k  ,j)
+            qim1 = u(i,k+1,j)
+            qim2 = u(i,k+2,j)
+            qim3 = u(i,k+3,j)
+            qim4 = u(i,k+4,j)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+         vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+         ENDDO
+         ENDDO
+         
+         ENDIF
 
          DO i = i_start, i_end
 
@@ -11458,6 +13682,75 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
            k=ktf
            vflux(i,k)=0.5*(rom(i,k,j)+rom(i-1,k,j)) &
                                    *(fzm(k)*u(i,k,j)+fzp(k)*u(i,k-1,j))
+
+           IF ( vert_order == 7 .or. vert_order == 9 ) THEN
+           
+             IF ( vert_order == 7 ) THEN
+               loop = 2
+               klev(1) = kts+3
+               klev(2) = ktf-2
+             ELSE
+               loop = 4
+               klev(1) = kts+3
+               klev(2) = ktf+4
+               klev(3) = ktf-3
+               klev(4) = ktf-2
+             ENDIF
+              
+             DO n = 1,loop
+             
+             k = klev(n)
+             
+              vel=0.5*(rom(i-1,k,j)+rom(i,k,j))
+     
+              IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+                 qip2 = u(i,k+1,j)
+                 qip1 = u(i,k  ,j)
+                 qi   = u(i,k-1,j)
+                 qim1 = u(i,k-2,j)
+                 qim2 = u(i,k-3,j)
+               ELSE
+                 qip2 = u(i,k-2,j)
+                 qip1 = u(i,k-1,j)
+                 qi   = u(i,k  ,j)
+                 qim1 = u(i,k+1,j)
+                 qim2 = u(i,k+2,j)
+              ENDIF
+         
+              f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+              f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+              f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+         
+              beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+              beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+              beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+         
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+         
+              sumwk = wi0 + wi1 + wi2
+         
+               vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+                  
+             
+             ENDDO
+           
+           
+           ENDIF
+
 
          ENDDO
          DO k=kts,ktf
@@ -11543,11 +13836,16 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
    integer kt,kb
    
     
-    real               :: qim2, qim1, qi, qip1, qip2
-    double precision               :: beta0, beta1, beta2, f0, f1, f2, wi0, wi1, wi2, sumwk
-    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-18
-    integer, parameter :: pw = 2
-
+    integer :: klev(4), loop,n
+    real               :: qim4, qim3, qim2, qim1, qi, qip1, qip2, qip3, qip4
+    double precision   :: beta0, beta1, beta2, beta3, beta4
+    double precision   ::  f0, f1, f2, f3, f4, wi0, wi1, wi2, wi3, wi4, sumwk, suma, tau5
+    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-40
+    double precision, parameter    :: c04 = 1.d0/35.d0, c14 = 12.d0/35.d0, c24 = 18.d0/35.d0, c34 = 4.d0/35.d0
+    double precision, parameter    :: c05 = 1.d0/126.d0, c15 = 10.d0/63.d0, c25 = 10.d0/21.d0
+    double precision, parameter    :: c35 = 20.d0/63.d0, c45 = 5.d0/126.d0
+    integer, parameter :: pw = 2, pw7 = 2, pw9 = 2
+    logical, parameter :: wenoz = .true.
 
    REAL    :: mrdx, mrdy, ub, vb, uw, vw, dup, dum
    REAL , DIMENSION(its:ite, kts:kte) :: vflux
@@ -11596,8 +13894,24 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
 ! set order for the advection schemes
 
    ktf=MIN(kte,kde-1)
-   horz_order = config_flags%h_mom_adv_order
-   vert_order = config_flags%v_mom_adv_order
+!   horz_order = config_flags%h_mom_adv_order
+!   vert_order = config_flags%v_mom_adv_order
+
+  IF ( config_flags%h_mom_adv_order <= 6 ) THEN  
+    horz_order = 5 
+  ELSEIF (config_flags%h_mom_adv_order <= 8 ) THEN
+    horz_order = 7 
+  ELSEIF (config_flags%h_mom_adv_order <= 10 ) THEN
+    horz_order = 9 
+  ENDIF
+
+  IF ( config_flags%v_mom_adv_order <= 6 ) THEN  
+    vert_order = 5 
+  ELSEIF ( config_flags%v_mom_adv_order <= 8 ) THEN  
+    vert_order = 7 
+  ELSEIF ( config_flags%v_mom_adv_order <= 10 ) THEN  
+    vert_order = 9 
+  ENDIF
 
 
 !  here is the choice of flux operators
@@ -11651,12 +13965,12 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
 
       IF(degrade_ys) then
         j_start = MAX(jts,jds+1)
-        j_start_f = jds+3
+        j_start_f = jds+3 + (horz_order - 5)/2
       ENDIF
 
       IF(degrade_ye) then
         j_end = MIN(jte,jde-1)
-        j_end_f = jde-2
+        j_end_f = jde-2 - (horz_order - 5)/2
       ENDIF
 
 !  compute fluxes, 5th or 6th order
@@ -11668,6 +13982,8 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
 
       IF( (j >= j_start_f ) .and. (j <= j_end_f) ) THEN
 
+        IF ( horz_order == 5 ) THEN 
+        
         DO k=kts,ktf
         DO i = i_start, i_end
           vel = 0.5*(rv(i,k,j)+rv(i,k,j-1))
@@ -11694,21 +14010,182 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
           fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
 
-
-
-!          fqy( i, k, jp1 ) = vel*flux5(               &
-!                  v(i,k,j-3), v(i,k,j-2), v(i,k,j-1),       &
-!                  v(i,k,j  ), v(i,k,j+1), v(i,k,j+2),  vel )
         ENDDO
         ENDDO
+
+        ELSEIF ( horz_order == 7 ) THEN 
+        
+        DO k=kts,ktf
+        DO i = i_start, i_end
+          vel = 0.5*(rv(i,k,j)+rv(i,k,j-1))
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = v(i,k,j+2)
+            qip2 = v(i,k,j+1)
+            qip1 = v(i,k,j  )
+            qi   = v(i,k,j-1)
+            qim1 = v(i,k,j-2)
+            qim2 = v(i,k,j-3)
+            qim3 = v(i,k,j-4)
+          ELSE
+            qip3 = v(i,k,j-3)
+            qip2 = v(i,k,j-2)
+            qip1 = v(i,k,j-1)
+            qi   = v(i,k,j  )
+            qim1 = v(i,k,j+1)
+            qim2 = v(i,k,j+2)
+            qim3 = v(i,k,j+3)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+    
+          fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+
+        ENDDO
+        ENDDO
+
+        ELSEIF ( horz_order == 9 ) THEN 
+        
+        DO k=kts,ktf
+        DO i = i_start, i_end
+          vel = 0.5*(rv(i,k,j)+rv(i,k,j-1))
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = v(i,k,j+3)
+            qip3 = v(i,k,j+2)
+            qip2 = v(i,k,j+1)
+            qip1 = v(i,k,j  )
+            qi   = v(i,k,j-1)
+            qim1 = v(i,k,j-2)
+            qim2 = v(i,k,j-3)
+            qim3 = v(i,k,j-4)
+            qim4 = v(i,k,j-5)
+          ELSE
+            qip4 = v(i,k,j-4)
+            qip3 = v(i,k,j-3)
+            qip2 = v(i,k,j-2)
+            qip1 = v(i,k,j-1)
+            qi   = v(i,k,j  )
+            qim1 = v(i,k,j+1)
+            qim2 = v(i,k,j+2)
+            qim3 = v(i,k,j+3)
+            qim4 = v(i,k,j+4)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+          fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+        ENDDO
+        ENDDO
+        
+        ENDIF
 
 !  we must be close to some boundary where we need to reduce the order of the stencil
 !  specified uses upstream normal wind at boundaries
@@ -11753,6 +14230,57 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
               vel = 0.5*(rv(i,k,j)+rv(i,k,j-1))
               fqy( i, k, jp1 ) = vel*flux3(     &
                    v(i,k,j-2),v(i,k,j-1),v(i,k,j),v(i,k,j+1),vel )
+            ENDDO
+            ENDDO
+
+     ELSE IF  ( (horz_order == 7 .and. j == jds+3) .or. ( horz_order == 9 .and. (j == jds+3 .or. j == jds+4 )) &
+                  .or.(horz_order == 7 .and. j == jde-2) .or. ( horz_order == 9 .and. (j == jde-3 .or. j == jde-3 ))) THEN  ! tth order flux  in from south boundary
+
+        DO k=kts,ktf
+        DO i = i_start, i_end
+          vel = 0.5*(rv(i,k,j)+rv(i,k,j-1))
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip2 = v(i,k,j+1)
+            qip1 = v(i,k,j  )
+            qi   = v(i,k,j-1)
+            qim1 = v(i,k,j-2)
+            qim2 = v(i,k,j-3)
+          ELSE
+            qip2 = v(i,k,j-2)
+            qip1 = v(i,k,j-1)
+            qi   = v(i,k,j  )
+            qim1 = v(i,k,j+1)
+            qim2 = v(i,k,j+2)
+         ENDIF
+    
+         f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+         f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+         f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+    
+         beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+         beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+         beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2
+    
+         fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
             ENDDO
             ENDDO
 
@@ -11821,12 +14349,12 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
       IF(degrade_xs) then
         i_start = MAX(ids+1,its)
 !        i_start_f = i_start+2
-        i_start_f = MIN(i_start+2,ids+3)
+        i_start_f = MIN(i_start+2,ids+3)  + (horz_order - 5)/2
       ENDIF
 
       IF(degrade_xe) then
         i_end = MIN(ide-2,ite)
-        i_end_f = ide-3
+        i_end_f = ide-3 - (horz_order - 5)/2
       ENDIF
 
 !  compute fluxes
@@ -11834,6 +14362,8 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
       DO j = j_start, j_end
 
 !  5th or 6th order flux
+
+        IF ( horz_order == 5 ) THEN 
 
         DO k=kts,ktf
         DO i = i_start_f, i_end_f
@@ -11861,20 +14391,182 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
          fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
 
-!          fqx( i, k ) = vel*flux5( v(i-3,k,j), v(i-2,k,j),  &
-!                                         v(i-1,k,j), v(i  ,k,j),  &
-!                                         v(i+1,k,j), v(i+2,k,j),  &
-!                                         vel                     )
         ENDDO
         ENDDO
+
+        ELSEIF ( horz_order == 7 ) THEN 
+
+        DO k=kts,ktf
+        DO i = i_start_f, i_end_f
+          vel = 0.5*(ru(i,k,j)+ru(i,k,j-1))
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = v(i+2,k,j)
+            qip2 = v(i+1,k,j)
+            qip1 = v(i,  k,j)
+            qi   = v(i-1,k,j)
+            qim1 = v(i-2,k,j)
+            qim2 = v(i-3,k,j)
+            qim3 = v(i-4,k,j)
+          ELSE
+            qip3 = v(i-3,k,j)
+            qip2 = v(i-2,k,j)
+            qip1 = v(i-1,k,j)
+            qi   = v(i,  k,j)
+            qim1 = v(i+1,k,j)
+            qim2 = v(i+2,k,j)
+            qim3 = v(i+3,k,j)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+        
+         fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+
+        ENDDO
+        ENDDO
+
+        ELSEIF ( horz_order == 9 ) THEN 
+
+        DO k=kts,ktf
+        DO i = i_start_f, i_end_f
+          vel = 0.5*(ru(i,k,j)+ru(i,k,j-1))
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = v(i+3,k,j)
+            qip3 = v(i+2,k,j)
+            qip2 = v(i+1,k,j)
+            qip1 = v(i,  k,j)
+            qi   = v(i-1,k,j)
+            qim1 = v(i-2,k,j)
+            qim2 = v(i-3,k,j)
+            qim3 = v(i-4,k,j)
+            qim4 = v(i-5,k,j)
+          ELSE
+            qip4 = v(i-4,k,j)
+            qip3 = v(i-3,k,j)
+            qip2 = v(i-2,k,j)
+            qip1 = v(i-1,k,j)
+            qi   = v(i,  k,j)
+            qim1 = v(i+1,k,j)
+            qim2 = v(i+2,k,j)
+            qim3 = v(i+3,k,j)
+            qim4 = v(i+4,k,j)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+         fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+        ENDDO
+        ENDDO
+        
+        ENDIF
 
 !  lower order fluxes close to boundaries (if not periodic or symmetric)
 
@@ -11898,7 +14590,60 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
               ENDDO
             ENDIF
 
-          ENDDO
+            IF ( ( horz_order == 7 .and. i == ids + 3 ) .or. ( horz_order == 9 .and. ( i == ids + 3 .or. i == ids + 4 ) ) ) THEN
+
+             DO k=kts,ktf
+
+               vel = 0.5*(ru(i,k,j)+ru(i,k,j-1))
+     
+              IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+                 qip2 = v(i+1,k,j)
+                 qip1 = v(i,  k,j)
+                 qi   = v(i-1,k,j)
+                 qim1 = v(i-2,k,j)
+                 qim2 = v(i-3,k,j)
+               ELSE
+                 qip2 = v(i-2,k,j)
+                 qip1 = v(i-1,k,j)
+                 qi   = v(i,  k,j)
+                 qim1 = v(i+1,k,j)
+                 qim2 = v(i+2,k,j)
+              ENDIF
+         
+              f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+              f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+              f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+         
+              beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+              beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+              beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+         
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+         
+              sumwk = wi0 + wi1 + wi2
+         
+              fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+            ENDDO
+          
+           ENDIF
+           
+         ENDDO
+
 
         ENDIF
 
@@ -11921,6 +14666,58 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
                                         vel                     )
               ENDDO
             ENDIF
+
+            IF ( ( horz_order == 7 .and. i == ide - 3 ) .or. ( horz_order == 9 .and. ( i == ide - 4 .or. i == ide - 3 ) ) ) THEN
+
+             DO k=kts,ktf
+
+               vel = 0.5*(ru(i,k,j)+ru(i,k,j-1))
+     
+              IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+                 qip2 = v(i+1,k,j)
+                 qip1 = v(i,  k,j)
+                 qi   = v(i-1,k,j)
+                 qim1 = v(i-2,k,j)
+                 qim2 = v(i-3,k,j)
+               ELSE
+                 qip2 = v(i-2,k,j)
+                 qip1 = v(i-1,k,j)
+                 qi   = v(i,  k,j)
+                 qim1 = v(i+1,k,j)
+                 qim2 = v(i+2,k,j)
+              ENDIF
+         
+              f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+              f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+              f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+         
+              beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+              beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+              beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+         
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+         
+              sumwk = wi0 + wi1 + wi2
+         
+              fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+            ENDDO
+          
+           ENDIF
 
           ENDDO
 
@@ -12088,6 +14885,7 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
 
       DO j = j_start, j_end
 
+         IF ( vert_order == 5 ) THEN
 
          DO k=kts+3,ktf-2
          DO i = i_start, i_end
@@ -12115,20 +14913,132 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
           vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
 
+         ENDDO
+         ENDDO
 
-!           vflux(i,k) = vel*flux5(                       &
-!                   v(i,k-3,j), v(i,k-2,j), v(i,k-1,j),       &
-!                   v(i,k  ,j), v(i,k+1,j), v(i,k+2,j),  -vel )
+         ELSEIF ( vert_order == 7 ) THEN
+
+         DO k=kts+4,ktf-3
+         DO i = i_start, i_end
+           vel=0.5*(rom(i,k,j)+rom(i,k,j-1))
+
+         IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip2 = v(i,k+1,j)
+            qip1 = v(i,k  ,j)
+            qi   = v(i,k-1,j)
+            qim1 = v(i,k-2,j)
+            qim2 = v(i,k-3,j)
+          ELSE
+            qip2 = v(i,k-2,j)
+            qip1 = v(i,k-1,j)
+            qi   = v(i,k  ,j)
+            qim1 = v(i,k+1,j)
+            qim2 = v(i,k+2,j)
+         ENDIF
+    
+         f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+         f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+         f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+    
+         beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+         beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+         beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2
+    
+          vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
          ENDDO
          ENDDO
+
+         ELSEIF ( vert_order == 9 ) THEN
+
+         DO k=kts+5,ktf-4
+         DO i = i_start, i_end
+           vel=0.5*(rom(i,k,j)+rom(i,k,j-1))
+
+         IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip2 = v(i,k+1,j)
+            qip1 = v(i,k  ,j)
+            qi   = v(i,k-1,j)
+            qim1 = v(i,k-2,j)
+            qim2 = v(i,k-3,j)
+          ELSE
+            qip2 = v(i,k-2,j)
+            qip1 = v(i,k-1,j)
+            qi   = v(i,k  ,j)
+            qim1 = v(i,k+1,j)
+            qim2 = v(i,k+2,j)
+         ENDIF
+    
+         f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+         f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+         f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+    
+         beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+         beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+         beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2
+    
+          vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+         ENDDO
+         ENDDO
+         
+         ENDIF
 
          DO i = i_start, i_end
            k=kts+1
@@ -12147,6 +15057,74 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
            k=ktf
            vflux(i,k)=0.5*(rom(i,k,j)+rom(i,k,j-1)) &
                                    *(fzm(k)*v(i,k,j)+fzp(k)*v(i,k-1,j))
+
+           IF ( vert_order == 7 .or. vert_order == 9 ) THEN
+           
+             IF ( vert_order == 7 ) THEN
+               loop = 2
+               klev(1) = kts+3
+               klev(2) = ktf-2
+             ELSE
+               loop = 4
+               klev(1) = kts+3
+               klev(2) = ktf+4
+               klev(3) = ktf-3
+               klev(4) = ktf-2
+             ENDIF
+              
+             DO n = 1,loop
+             
+             k = klev(n)
+             
+              vel=0.5*(rom(i,k,j)+rom(i,k,j-1))
+     
+              IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+                 qip2 = v(i,k+1,j)
+                 qip1 = v(i,k  ,j)
+                 qi   = v(i,k-1,j)
+                 qim1 = v(i,k-2,j)
+                 qim2 = v(i,k-3,j)
+               ELSE
+                 qip2 = v(i,k-2,j)
+                 qip1 = v(i,k-1,j)
+                 qi   = v(i,k  ,j)
+                 qim1 = v(i,k+1,j)
+                 qim2 = v(i,k+2,j)
+              ENDIF
+         
+              f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+              f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+              f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+         
+              beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+              beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+              beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+         
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+         
+              sumwk = wi0 + wi1 + wi2
+         
+               vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+             
+             
+             ENDDO
+           
+           
+           ENDIF
 
          ENDDO
 
@@ -12241,11 +15219,16 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
    integer kt,kb
    
     
-    real               :: qim2, qim1, qi, qip1, qip2
-    double precision               :: beta0, beta1, beta2, f0, f1, f2, wi0, wi1, wi2, sumwk
-    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-18
-    integer, parameter :: pw = 2
-
+    integer :: klev(4), loop,n
+    real               :: qim4, qim3, qim2, qim1, qi, qip1, qip2, qip3, qip4
+    double precision   :: beta0, beta1, beta2, beta3, beta4
+    double precision   ::  f0, f1, f2, f3, f4, wi0, wi1, wi2, wi3, wi4, sumwk, suma, tau5
+    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-40
+    double precision, parameter    :: c04 = 1.d0/35.d0, c14 = 12.d0/35.d0, c24 = 18.d0/35.d0, c34 = 4.d0/35.d0
+    double precision, parameter    :: c05 = 1.d0/126.d0, c15 = 10.d0/63.d0, c25 = 10.d0/21.d0
+    double precision, parameter    :: c35 = 20.d0/63.d0, c45 = 5.d0/126.d0
+    integer, parameter :: pw = 2, pw7 = 2, pw9 = 2
+    logical, parameter :: wenoz = .true.
 
 
    INTEGER :: horz_order, vert_order
@@ -12288,8 +15271,24 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 !  set order for the advection scheme
 
   ktf=MIN(kte,kde-1)
-  horz_order = config_flags%h_sca_adv_order
-  vert_order = config_flags%v_sca_adv_order
+!  horz_order = config_flags%h_sca_adv_order
+!  vert_order = config_flags%v_sca_adv_order
+
+  IF ( config_flags%h_mom_adv_order <= 6 ) THEN  
+    horz_order = 5 
+  ELSEIF (config_flags%h_mom_adv_order <= 8 ) THEN
+    horz_order = 7 
+  ELSEIF (config_flags%h_mom_adv_order <= 10 ) THEN
+    horz_order = 9 
+  ENDIF
+
+  IF ( config_flags%v_mom_adv_order <= 6 ) THEN  
+    vert_order = 5 
+  ELSEIF ( config_flags%v_mom_adv_order <= 8 ) THEN  
+    vert_order = 7 
+  ELSEIF ( config_flags%v_mom_adv_order <= 10 ) THEN  
+    vert_order = 9 
+  ENDIF
 
 !  here is the choice of flux operators
 
@@ -12338,12 +15337,12 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 
       IF(degrade_ys) then
         j_start = MAX(jts,jds+1)
-        j_start_f = jds+3
+        j_start_f = jds+3 + (horz_order - 5)/2
       ENDIF
 
       IF(degrade_ye) then
         j_end = MIN(jte,jde-2)
-        j_end_f = jde-3
+        j_end_f = jde-3 - (horz_order - 5)/2
       ENDIF
 
       IF(config_flags%polar) j_end = MIN(jte,jde-1)
@@ -12356,6 +15355,8 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
      j_loop_y_flux_5 : DO j = j_start, j_end+1
 
       IF( (j >= j_start_f ) .and. (j <= j_end_f) ) THEN
+
+        IF ( horz_order == 5 ) THEN 
 
         DO k=kts+1,ktf
         DO i = i_start, i_end
@@ -12383,17 +15384,26 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
           fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
 
-!          fqy( i, k, jp1 ) = vel*flux5(                     &
-!                  w(i,k,j-3), w(i,k,j-2), w(i,k,j-1),       &
-!                  w(i,k,j  ), w(i,k,j+1), w(i,k,j+2),  vel )
         ENDDO
         ENDDO
 
@@ -12423,18 +15433,329 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
           fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
 
-!          fqy( i, k, jp1 ) = vel*flux5(                     &
-!                  w(i,k,j-3), w(i,k,j-2), w(i,k,j-1),       &
-!                  w(i,k,j  ), w(i,k,j+1), w(i,k,j+2),  vel )
         ENDDO
+
+        ELSEIF ( horz_order == 7 ) THEN 
+
+        DO k=kts+1,ktf
+        DO i = i_start, i_end
+          vel = fzm(k)*rv(i,k,j)+fzp(k)*rv(i,k-1,j)
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = w(i,k,j+2)
+            qip2 = w(i,k,j+1)
+            qip1 = w(i,k,j  )
+            qi   = w(i,k,j-1)
+            qim1 = w(i,k,j-2)
+            qim2 = w(i,k,j-3)
+            qim3 = w(i,k,j-4)
+          ELSE
+            qip3 = w(i,k,j-3)
+            qip2 = w(i,k,j-2)
+            qip1 = w(i,k,j-1)
+            qi   = w(i,k,j  )
+            qim1 = w(i,k,j+1)
+            qim2 = w(i,k,j+2)
+            qim3 = w(i,k,j+3)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+    
+          fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+
+        ENDDO
+        ENDDO
+
+        k = ktf+1
+        DO i = i_start, i_end
+          vel = (2.-fzm(k-1))*rv(i,k-1,j)-fzp(k-1)*rv(i,k-2,j)
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = w(i,k,j+2)
+            qip2 = w(i,k,j+1)
+            qip1 = w(i,k,j  )
+            qi   = w(i,k,j-1)
+            qim1 = w(i,k,j-2)
+            qim2 = w(i,k,j-3)
+            qim3 = w(i,k,j-4)
+          ELSE
+            qip3 = w(i,k,j-3)
+            qip2 = w(i,k,j-2)
+            qip1 = w(i,k,j-1)
+            qi   = w(i,k,j  )
+            qim1 = w(i,k,j+1)
+            qim2 = w(i,k,j+2)
+            qim3 = w(i,k,j+3)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+    
+          fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+
+        ENDDO
+
+        ELSEIF ( horz_order == 9 ) THEN 
+
+        DO k=kts+1,ktf
+        DO i = i_start, i_end
+          vel = fzm(k)*rv(i,k,j)+fzp(k)*rv(i,k-1,j)
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = w(i,k,j+3)
+            qip3 = w(i,k,j+2)
+            qip2 = w(i,k,j+1)
+            qip1 = w(i,k,j  )
+            qi   = w(i,k,j-1)
+            qim1 = w(i,k,j-2)
+            qim2 = w(i,k,j-3)
+            qim3 = w(i,k,j-4)
+            qim4 = w(i,k,j-5)
+          ELSE
+            qip4 = w(i,k,j-4)
+            qip3 = w(i,k,j-3)
+            qip2 = w(i,k,j-2)
+            qip1 = w(i,k,j-1)
+            qi   = w(i,k,j  )
+            qim1 = w(i,k,j+1)
+            qim2 = w(i,k,j+2)
+            qim3 = w(i,k,j+3)
+            qim4 = w(i,k,j+4)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+         fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+        ENDDO
+        ENDDO
+
+        k = ktf+1
+        DO i = i_start, i_end
+          vel = (2.-fzm(k-1))*rv(i,k-1,j)-fzp(k-1)*rv(i,k-2,j)
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = w(i,k,j+3)
+            qip3 = w(i,k,j+2)
+            qip2 = w(i,k,j+1)
+            qip1 = w(i,k,j  )
+            qi   = w(i,k,j-1)
+            qim1 = w(i,k,j-2)
+            qim2 = w(i,k,j-3)
+            qim3 = w(i,k,j-4)
+            qim4 = w(i,k,j-5)
+          ELSE
+            qip4 = w(i,k,j-4)
+            qip3 = w(i,k,j-3)
+            qip2 = w(i,k,j-2)
+            qip1 = w(i,k,j-1)
+            qi   = w(i,k,j  )
+            qim1 = w(i,k,j+1)
+            qim2 = w(i,k,j+2)
+            qim3 = w(i,k,j+3)
+            qim4 = w(i,k,j+4)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+          fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+        ENDDO
+        
+        ENDIF
+
+
 
       ELSE IF ( j == jds+1 ) THEN   ! 2nd order flux next to south boundary
 
@@ -12502,6 +15823,106 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
                    w(i,k,j),w(i,k,j+1),vel )
             ENDDO
 
+     ELSE IF  ( (horz_order == 7 .and. j == jds+3) .or. ( horz_order == 9 .and. (j == jds+3 .or. j == jds+4 )) &
+                  .or.(horz_order == 7 .and. j == jde-3) .or. ( horz_order == 9 .and. (j == jde-3 .or. j == jde-4 ))) THEN  ! tth order flux  in from south boundary
+
+        DO k=kts+1,ktf
+        DO i = i_start, i_end
+          vel = fzm(k)*rv(i,k,j)+fzp(k)*rv(i,k-1,j)
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip2 = w(i,k,j+1)
+            qip1 = w(i,k,j  )
+            qi   = w(i,k,j-1)
+            qim1 = w(i,k,j-2)
+            qim2 = w(i,k,j-3)
+          ELSE
+            qip2 = w(i,k,j-2)
+            qip1 = w(i,k,j-1)
+            qi   = w(i,k,j  )
+            qim1 = w(i,k,j+1)
+            qim2 = w(i,k,j+2)
+         ENDIF
+    
+         f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+         f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+         f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+    
+         beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+         beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+         beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2
+    
+          fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+        ENDDO
+        ENDDO
+
+        k = ktf+1
+        DO i = i_start, i_end
+          vel = (2.-fzm(k-1))*rv(i,k-1,j)-fzp(k-1)*rv(i,k-2,j)
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip2 = w(i,k,j+1)
+            qip1 = w(i,k,j  )
+            qi   = w(i,k,j-1)
+            qim1 = w(i,k,j-2)
+            qim2 = w(i,k,j-3)
+          ELSE
+            qip2 = w(i,k,j-2)
+            qip1 = w(i,k,j-1)
+            qi   = w(i,k,j  )
+            qim1 = w(i,k,j+1)
+            qim2 = w(i,k,j+2)
+         ENDIF
+    
+         f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+         f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+         f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+    
+         beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+         beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+         beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2
+    
+          fqy( i, k, jp1 ) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+        ENDDO
+
      ENDIF
 
 !  y flux-divergence into tendency
@@ -12562,12 +15983,12 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
       IF(degrade_xs) then
         i_start = MAX(ids+1,its)
 !        i_start_f = i_start+2
-        i_start_f = MIN(i_start+2,ids+3)
+        i_start_f = MIN(i_start+2,ids+3) + (horz_order - 5)/2
       ENDIF
 
       IF(degrade_xe) then
         i_end = MIN(ide-2,ite)
-        i_end_f = ide-3
+        i_end_f = ide-3 - (horz_order - 5)/2
       ENDIF
 
 !  compute fluxes
@@ -12575,6 +15996,7 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
       DO j = j_start, j_end
 
 !  5th or 6th order flux
+        IF ( horz_order == 5 ) THEN 
 
         DO k=kts+1,ktf
         DO i = i_start_f, i_end_f
@@ -12602,9 +16024,21 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
@@ -12643,9 +16077,21 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
@@ -12656,6 +16102,307 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 !                                  w(i+1,k,j), w(i+2,k,j),  &
 !                                  vel                     )
         ENDDO
+
+        ELSEIF ( horz_order == 7 ) THEN 
+
+        DO k=kts+1,ktf
+        DO i = i_start_f, i_end_f
+          vel = fzm(k)*ru(i,k,j)+fzp(k)*ru(i,k-1,j)
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = w(i+2,k,j)
+            qip2 = w(i+1,k,j)
+            qip1 = w(i,  k,j)
+            qi   = w(i-1,k,j)
+            qim1 = w(i-2,k,j)
+            qim2 = w(i-3,k,j)
+            qim3 = w(i-4,k,j)
+          ELSE
+            qip3 = w(i-3,k,j)
+            qip2 = w(i-2,k,j)
+            qip1 = w(i-1,k,j)
+            qi   = w(i,  k,j)
+            qim1 = w(i+1,k,j)
+            qim2 = w(i+2,k,j)
+            qim3 = w(i+3,k,j)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+        
+         fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+
+        ENDDO
+        ENDDO
+
+        k = ktf+1
+        DO i = i_start_f, i_end_f
+          vel = (2.-fzm(k-1))*ru(i,k-1,j)-fzp(k-1)*ru(i,k-2,j)
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = w(i+2,k,j)
+            qip2 = w(i+1,k,j)
+            qip1 = w(i,  k,j)
+            qi   = w(i-1,k,j)
+            qim1 = w(i-2,k,j)
+            qim2 = w(i-3,k,j)
+            qim3 = w(i-4,k,j)
+          ELSE
+            qip3 = w(i-3,k,j)
+            qip2 = w(i-2,k,j)
+            qip1 = w(i-1,k,j)
+            qi   = w(i,  k,j)
+            qim1 = w(i+1,k,j)
+            qim2 = w(i+2,k,j)
+            qim3 = w(i+3,k,j)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+        
+         fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+
+        ENDDO
+
+        ELSEIF ( horz_order == 9 ) THEN 
+
+        DO k=kts+1,ktf
+        DO i = i_start_f, i_end_f
+          vel = fzm(k)*ru(i,k,j)+fzp(k)*ru(i,k-1,j)
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = w(i+3,k,j)
+            qip3 = w(i+2,k,j)
+            qip2 = w(i+1,k,j)
+            qip1 = w(i,  k,j)
+            qi   = w(i-1,k,j)
+            qim1 = w(i-2,k,j)
+            qim2 = w(i-3,k,j)
+            qim3 = w(i-4,k,j)
+            qim4 = w(i-5,k,j)
+          ELSE
+            qip4 = w(i-4,k,j)
+            qip3 = w(i-3,k,j)
+            qip2 = w(i-2,k,j)
+            qip1 = w(i-1,k,j)
+            qi   = w(i,  k,j)
+            qim1 = w(i+1,k,j)
+            qim2 = w(i+2,k,j)
+            qim3 = w(i+3,k,j)
+            qim4 = w(i+4,k,j)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+         fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+
+        ENDDO
+        ENDDO
+
+        k = ktf+1
+        DO i = i_start_f, i_end_f
+          vel = (2.-fzm(k-1))*ru(i,k-1,j)-fzp(k-1)*ru(i,k-2,j)
+
+         IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = w(i+3,k,j)
+            qip3 = w(i+2,k,j)
+            qip2 = w(i+1,k,j)
+            qip1 = w(i,  k,j)
+            qi   = w(i-1,k,j)
+            qim1 = w(i-2,k,j)
+            qim2 = w(i-3,k,j)
+            qim3 = w(i-4,k,j)
+            qim4 = w(i-5,k,j)
+          ELSE
+            qip4 = w(i-4,k,j)
+            qip3 = w(i-3,k,j)
+            qip2 = w(i-2,k,j)
+            qip1 = w(i-1,k,j)
+            qi   = w(i,  k,j)
+            qim1 = w(i+1,k,j)
+            qim2 = w(i+2,k,j)
+            qim3 = w(i+3,k,j)
+            qim4 = w(i+4,k,j)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+         fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+        ENDDO
+        
+        ENDIF
 
 !  lower order fluxes close to boundaries (if not periodic or symmetric)
 
@@ -12686,6 +16433,105 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
                                       w(i  ,k,j), w(i+1,k,j),  &
                                       vel                     )
             END IF
+
+            IF ( ( horz_order == 7 .and. i == ids + 3 ) .or. ( horz_order == 9 .and. ( i == ids + 3 .or. i == ids + 4 ) ) ) THEN
+
+
+               DO k=kts+1,ktf
+                 vel = fzm(k)*ru(i,k,j)+fzp(k)*ru(i,k-1,j)
+       
+                IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+                   qip2 = w(i+1,k,j)
+                   qip1 = w(i,  k,j)
+                   qi   = w(i-1,k,j)
+                   qim1 = w(i-2,k,j)
+                   qim2 = w(i-3,k,j)
+                 ELSE
+                   qip2 = w(i-2,k,j)
+                   qip1 = w(i-1,k,j)
+                   qi   = w(i,  k,j)
+                   qim1 = w(i+1,k,j)
+                   qim2 = w(i+2,k,j)
+                ENDIF
+           
+                f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+                f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+                f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+           
+                beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+                beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+                beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+           
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+           
+                sumwk = wi0 + wi1 + wi2
+           
+                fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+               ENDDO
+       
+               k = ktf+1
+
+                 vel = (2.-fzm(k-1))*ru(i,k-1,j)-fzp(k-1)*ru(i,k-2,j)
+       
+                IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+                   qip2 = w(i+1,k,j)
+                   qip1 = w(i,  k,j)
+                   qi   = w(i-1,k,j)
+                   qim1 = w(i-2,k,j)
+                   qim2 = w(i-3,k,j)
+                 ELSE
+                   qip2 = w(i-2,k,j)
+                   qip1 = w(i-1,k,j)
+                   qi   = w(i,  k,j)
+                   qim1 = w(i+1,k,j)
+                   qim2 = w(i+2,k,j)
+                ENDIF
+           
+                f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+                f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+                f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+           
+                beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+                beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+                beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+           
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+           
+                sumwk = wi0 + wi1 + wi2
+           
+                fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+       
+          
+           ENDIF
 
           ENDDO
 
@@ -12718,6 +16564,105 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
                                       w(i  ,k,j), w(i+1,k,j),  &
                                       vel                     )
             ENDIF
+
+            IF ( ( horz_order == 7 .and. i == ide - 3 ) .or. ( horz_order == 9 .and. ( i == ide - 3 .or. i == ide - 4 ) ) ) THEN
+
+
+               DO k=kts+1,ktf
+
+                 vel = fzm(k)*ru(i,k,j)+fzp(k)*ru(i,k-1,j)
+       
+                IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+                   qip2 = w(i+1,k,j)
+                   qip1 = w(i,  k,j)
+                   qi   = w(i-1,k,j)
+                   qim1 = w(i-2,k,j)
+                   qim2 = w(i-3,k,j)
+                 ELSE
+                   qip2 = w(i-2,k,j)
+                   qip1 = w(i-1,k,j)
+                   qi   = w(i,  k,j)
+                   qim1 = w(i+1,k,j)
+                   qim2 = w(i+2,k,j)
+                ENDIF
+           
+                f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+                f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+                f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+           
+                beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+                beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+                beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+           
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+           
+                sumwk = wi0 + wi1 + wi2
+           
+                fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+
+               ENDDO
+       
+               k = ktf+1
+                 vel = (2.-fzm(k-1))*ru(i,k-1,j)-fzp(k-1)*ru(i,k-2,j)
+       
+                IF ( vel*sign(1,time_step) .ge. 0.0 ) THEN
+                   qip2 = w(i+1,k,j)
+                   qip1 = w(i,  k,j)
+                   qi   = w(i-1,k,j)
+                   qim1 = w(i-2,k,j)
+                   qim2 = w(i-3,k,j)
+                 ELSE
+                   qip2 = w(i-2,k,j)
+                   qip1 = w(i-1,k,j)
+                   qi   = w(i,  k,j)
+                   qim1 = w(i+1,k,j)
+                   qim2 = w(i+2,k,j)
+                ENDIF
+           
+                f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+                f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+                f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+           
+                beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+                beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+                beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+           
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+           
+                sumwk = wi0 + wi1 + wi2
+           
+                fqx(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+       
+          
+           ENDIF
 
           ENDDO
 
@@ -12914,6 +16859,8 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 
       DO j = j_start, j_end
 
+         IF (vert_order == 5) THEN
+         
          DO k=kts+3,ktf-1
          DO i = i_start, i_end
            vel=0.5*(rom(i,k,j)+rom(i,k-1,j))
@@ -12940,19 +16887,182 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
          beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
          beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
     
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
          wi0 = gi0 / (eps + beta0)**pw
          wi1 = gi1 / (eps + beta1)**pw
          wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
     
          sumwk = wi0 + wi1 + wi2
     
           vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
 
-!           vflux(i,k) = vel*flux5(                                   &
-!                   w(i,k-3,j), w(i,k-2,j), w(i,k-1,j),       &
-!                   w(i,k  ,j), w(i,k+1,j), w(i,k+2,j),  -vel )
          ENDDO
          ENDDO
+
+         ELSEIF (vert_order == 7) THEN
+         
+         DO k=kts+4,ktf-2
+         DO i = i_start, i_end
+           vel=0.5*(rom(i,k,j)+rom(i,k-1,j))
+
+         IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = w(i,k+2,j)
+            qip2 = w(i,k+1,j)
+            qip1 = w(i,k  ,j)
+            qi   = w(i,k-1,j)
+            qim1 = w(i,k-2,j)
+            qim2 = w(i,k-3,j)
+            qim3 = w(i,k-4,j)
+          ELSE
+            qip3 = w(i,k-3,j)
+            qip2 = w(i,k-2,j)
+            qip1 = w(i,k-1,j)
+            qi   = w(i,k  ,j)
+            qim1 = w(i,k+1,j)
+            qim2 = w(i,k+2,j)
+            qim3 = w(i,k+3,j)
+         ENDIF
+    
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
+    
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta3)
+         
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
+         
+         ELSE
+         
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3
+        
+         vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+
+         ENDDO
+         ENDDO
+
+         ELSEIF (vert_order == 9) THEN
+         
+         DO k=kts+5,ktf-3
+         DO i = i_start, i_end
+           vel=0.5*(rom(i,k,j)+rom(i,k-1,j))
+
+         IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = w(i,k+3,j)
+            qip3 = w(i,k+2,j)
+            qip2 = w(i,k+1,j)
+            qip1 = w(i,k  ,j)
+            qi   = w(i,k-1,j)
+            qim1 = w(i,k-2,j)
+            qim2 = w(i,k-3,j)
+            qim3 = w(i,k-4,j)
+            qim4 = w(i,k-5,j)
+          ELSE
+            qip4 = w(i,k-4,j)
+            qip3 = w(i,k-3,j)
+            qip2 = w(i,k-2,j)
+            qip1 = w(i,k-1,j)
+            qi   = w(i,k  ,j)
+            qim1 = w(i,k+1,j)
+            qim2 = w(i,k+2,j)
+            qim3 = w(i,k+3,j)
+            qim4 = w(i,k+4,j)
+         ENDIF
+    
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
+    
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta4)
+         
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
+         
+         ELSE
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
+         
+         ENDIF
+    
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
+    
+    
+         vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+
+         ENDDO
+         ENDDO
+         
+         ENDIF
 
          DO i = i_start, i_end
 
@@ -12972,6 +17082,75 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 
            k=ktf+1
            vflux(i,k)=0.25*(rom(i,k,j)+rom(i,k-1,j))*(w(i,k,j)+w(i,k-1,j))
+           
+           IF ( vert_order == 7 .or. vert_order == 9 ) THEN
+           
+             IF ( vert_order == 7 ) THEN
+               loop = 2
+               klev(1) = kts+3
+               klev(2) = ktf-1
+             ELSE
+               loop = 4
+               klev(1) = kts+3
+               klev(2) = ktf+4
+               klev(3) = ktf-2
+               klev(4) = ktf-1
+             ENDIF
+              
+             DO n = 1,loop
+             
+             k = klev(n)
+             
+             vel=0.5*(rom(i,k,j)+rom(i,k-1,j))
+    
+             IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+                qip2 = w(i,k+1,j)
+                qip1 = w(i,k  ,j)
+                qi   = w(i,k-1,j)
+                qim1 = w(i,k-2,j)
+                qim2 = w(i,k-3,j)
+              ELSE
+                qip2 = w(i,k-2,j)
+                qip1 = w(i,k-1,j)
+                qi   = w(i,k  ,j)
+                qim1 = w(i,k+1,j)
+                qim2 = w(i,k+2,j)
+             ENDIF
+        
+             f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
+             f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
+             f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+        
+             beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
+             beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
+             beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+        
+         IF ( wenoz ) THEN
+         
+         tau5 = abs(beta0-beta2)
+         
+         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
+         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
+         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         
+         ELSE
+         
+         wi0 = gi0 / (eps + beta0)**pw
+         wi1 = gi1 / (eps + beta1)**pw
+         wi2 = gi2 / (eps + beta2)**pw
+         
+         ENDIF
+        
+             sumwk = wi0 + wi1 + wi2
+        
+              vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+             
+             
+             ENDDO
+           
+           
+           ENDIF
+           
 
          ENDDO
 

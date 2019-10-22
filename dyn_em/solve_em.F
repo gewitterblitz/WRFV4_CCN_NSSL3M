@@ -46,7 +46,15 @@ SUBROUTINE solve_em ( grid , config_flags  &
                  ,period_bdy_em_tracer_sub,period_em_da_sub,period_em_hydro_uv_sub         &
                  ,period_em_f_sub,period_em_g_sub                                          &
                  ,halo_em_f_1_sub,halo_em_init_4_sub,halo_em_thetam_sub,period_em_thetam_sub &
-                 ,halo_em_d_pv_sub
+                 ,halo_em_d_pv_sub &
+                 ,halo_em_f_1_sub,halo_em_init_4_sub,halo_em_thetam_sub,period_em_thetam_sub &
+                 ,halo_em_d_pv_sub &
+                 ,halo_em_chem_e_9_sub,HALO_EM_SCALAR_E_9_sub,HALO_EM_TRACER_E_9_sub          &
+                 ,halo_em_chem_old_e_9_sub,halo_em_d2_7_sub,halo_em_d2_9_sub,halo_em_d3_7_sub &
+                 ,halo_em_d3_9_sub,halo_em_e_7_sub,halo_em_e_9_sub,halo_em_moist_e_9_sub      &
+                 ,halo_em_moist_old_e_9_sub,halo_em_scalar_old_e_9_sub,halo_em_tke_9_sub      &
+                 ,halo_em_tke_advect_7_sub,halo_em_tke_advect_9_sub,halo_em_tke_old_e_9_sub   &
+                 ,halo_em_tracer_old_e_9_sub
 #endif
    USE module_utility
 ! Mediation layer modules
@@ -333,8 +341,24 @@ SUBROUTINE solve_em ( grid , config_flags  &
        IF( config_flags%progn > 0 ) THEN
 #         include "HALO_EM_SCALAR_E_5.inc"
       ENDIF
+     ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
+#      include "HALO_EM_CHEM_E_7.inc"
+       IF( config_flags%cu_physics == CAMZMSCHEME ) THEN
+#         include "HALO_EM_SCALAR_E_7.inc"
+       ENDIF
+       IF( config_flags%progn > 0 ) THEN
+#         include "HALO_EM_SCALAR_E_7.inc"
+       ENDIF
+     ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#      include "HALO_EM_CHEM_E_9.inc"
+       IF( config_flags%cu_physics == CAMZMSCHEME ) THEN
+#         include "HALO_EM_SCALAR_E_9.inc"
+       ENDIF
+       IF( config_flags%progn > 0 ) THEN
+#         include "HALO_EM_SCALAR_E_9.inc"
+       ENDIF
      ELSE
-       WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
+       WRITE(wrf_err_message,*)'solve_em1: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
        CALL wrf_error_fatal(TRIM(wrf_err_message))
      ENDIF
    ENDIF
@@ -345,10 +369,14 @@ SUBROUTINE solve_em ( grid , config_flags  &
      CALL wrf_debug ( 200 , ' call HALO_RK_tracer' )
      IF      ( config_flags%h_sca_adv_order <= 4 ) THEN
 #      include "HALO_EM_TRACER_E_3.inc"
-     ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
+     ELSE IF ( config_flags%h_sca_adv_order <= 16 ) THEN
 #      include "HALO_EM_TRACER_E_5.inc"
+     ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
+#      include "HALO_EM_TRACER_E_7.inc"
+     ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#      include "HALO_EM_TRACER_E_9.inc"
      ELSE
-       WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
+       WRITE(wrf_err_message,*)'solve_em2: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
        CALL wrf_error_fatal(TRIM(wrf_err_message))
      ENDIF
    ENDIF
@@ -1798,6 +1826,8 @@ BENCH_END(small_step_finish_tim)
 #     include "HALO_EM_MOIST_OLD_E_5.inc"
          ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
 #     include "HALO_EM_MOIST_OLD_E_7.inc"
+         ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#     include "HALO_EM_MOIST_OLD_E_9.inc"
          ELSE
            WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
            CALL wrf_error_fatal(TRIM(wrf_err_message))
@@ -1862,6 +1892,8 @@ BENCH_END(small_step_finish_tim)
 #     include "HALO_EM_SCALAR_OLD_E_5.inc"
          ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
 #     include "HALO_EM_SCALAR_OLD_E_7.inc"
+         ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#     include "HALO_EM_SCALAR_OLD_E_9.inc"
          ELSE
            WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
            CALL wrf_error_fatal(TRIM(wrf_err_message))
@@ -1928,6 +1960,8 @@ BENCH_END(small_step_finish_tim)
 #     include "HALO_EM_CHEM_OLD_E_5.inc"
            ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
 #     include "HALO_EM_CHEM_OLD_E_7.inc"
+           ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#     include "HALO_EM_CHEM_OLD_E_9.inc"
            ELSE
              WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
              CALL wrf_error_fatal(TRIM(wrf_err_message))
@@ -1990,6 +2024,8 @@ BENCH_END(small_step_finish_tim)
 #     include "HALO_EM_TRACER_OLD_E_5.inc"
            ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
 #     include "HALO_EM_TRACER_OLD_E_7.inc"
+           ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#     include "HALO_EM_TRACER_OLD_E_9.inc"
            ELSE
              WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
              CALL wrf_error_fatal(TRIM(wrf_err_message))
@@ -2051,6 +2087,8 @@ BENCH_END(small_step_finish_tim)
 #     include "HALO_EM_TKE_OLD_E_5.inc"
            ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
 #     include "HALO_EM_TKE_OLD_E_7.inc"
+           ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#     include "HALO_EM_TKE_OLD_E_9.inc"
            ELSE
              WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
              CALL wrf_error_fatal(TRIM(wrf_err_message))
@@ -2289,8 +2327,12 @@ BENCH_START(tke_adv_tim)
 #       include "HALO_EM_TKE_ADVECT_3.inc"
          ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
 #       include "HALO_EM_TKE_ADVECT_5.inc"
+         ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
+#       include "HALO_EM_TKE_ADVECT_7.inc"
+         ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#       include "HALO_EM_TKE_ADVECT_9.inc"
          ELSE
-          WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
+          WRITE(wrf_err_message,*)'solve_em3: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
           CALL wrf_error_fatal(TRIM(wrf_err_message))
          ENDIF
 #endif
@@ -3117,8 +3159,13 @@ BENCH_END(calc_p_rho_tim)
 #    include "HALO_EM_D2_3.inc"
        ELSE IF ( config_flags%h_mom_adv_order <= 6 .and. config_flags%h_sca_adv_order <= 6 ) THEN
 #    include "HALO_EM_D2_5.inc"
+       ELSE IF ( config_flags%h_mom_adv_order <= 8 .and. config_flags%h_sca_adv_order <= 8 ) THEN
+!       write(0,*) 'solve4: config_flags%h_mom_adv_order = ',config_flags%h_mom_adv_order
+#    include "HALO_EM_D2_7.inc"
+       ELSE IF ( config_flags%h_mom_adv_order <= 10 .and. config_flags%h_sca_adv_order <= 10 ) THEN
+#    include "HALO_EM_D2_9.inc"
        ELSE 
-         WRITE(wrf_err_message,*)'solve_em: invalid h_mom_adv_order = ',config_flags%h_mom_adv_order
+         WRITE(wrf_err_message,*)'solve_em4: invalid h_mom_adv_order = ',config_flags%h_mom_adv_order
          CALL wrf_error_fatal(TRIM(wrf_err_message))
        ENDIF
 #  include "PERIOD_BDY_EM_D.inc"
@@ -3255,12 +3302,20 @@ BENCH_END(bc_end_tim)
          ELSE
 #         include "HALO_EM_TKE_3.inc"
          ENDIF
-       ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
+       ELSE IF ( config_flags%h_sca_adv_order <= 16 ) THEN
          IF ( (config_flags%tke_adv_opt /= ORIGINAL .and. config_flags%tke_adv_opt /= WENO_SCALAR) .and. (rk_step == rk_order-1) ) THEN
 #         include "HALO_EM_TKE_7.inc"
          ELSE
 #         include "HALO_EM_TKE_5.inc"
          ENDIF
+       ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
+         IF ( (config_flags%tke_adv_opt /= ORIGINAL .and. config_flags%tke_adv_opt /= WENO_SCALAR) .and. (rk_step == rk_order-1) ) THEN
+#         include "HALO_EM_TKE_9.inc"
+         ELSE
+#         include "HALO_EM_TKE_7.inc"
+         ENDIF
+       ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#         include "HALO_EM_TKE_9.inc"
        ELSE
          WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
          CALL wrf_error_fatal(TRIM(wrf_err_message))
@@ -3278,6 +3333,18 @@ BENCH_END(bc_end_tim)
 #        include "HALO_EM_MOIST_E_7.inc"
            ELSE
 #        include "HALO_EM_MOIST_E_5.inc"
+           END IF
+         ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
+           IF ( (config_flags%moist_adv_opt /= ORIGINAL .and. config_flags%moist_adv_opt /= WENO_SCALAR) .and. (rk_step == rk_order-1) ) THEN
+#        include "HALO_EM_MOIST_E_9.inc"
+           ELSE
+#        include "HALO_EM_MOIST_E_7.inc"
+           END IF
+         ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+           IF ( (config_flags%moist_adv_opt /= ORIGINAL .and. config_flags%moist_adv_opt /= WENO_SCALAR) .and. (rk_step == rk_order-1) ) THEN
+#        include "HALO_EM_MOIST_E_9.inc"
+           ELSE
+#        include "HALO_EM_MOIST_E_9.inc"
            END IF
          ELSE
            WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
@@ -3297,6 +3364,18 @@ BENCH_END(bc_end_tim)
            ELSE
 #        include "HALO_EM_CHEM_E_5.inc"
            ENDIF
+         ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
+           IF ( (config_flags%chem_adv_opt /= ORIGINAL .and. config_flags%chem_adv_opt /= WENO_SCALAR) .and. (rk_step == rk_order-1) ) THEN
+#        include "HALO_EM_CHEM_E_9.inc"
+           ELSE
+#        include "HALO_EM_CHEM_E_7.inc"
+           ENDIF
+         ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+           IF ( (config_flags%chem_adv_opt /= ORIGINAL .and. config_flags%chem_adv_opt /= WENO_SCALAR) .and. (rk_step == rk_order-1) ) THEN
+#        include "HALO_EM_CHEM_E_9.inc"
+           ELSE
+#        include "HALO_EM_CHEM_E_9.inc"
+           ENDIF
          ELSE
            WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
            CALL wrf_error_fatal(TRIM(wrf_err_message))
@@ -3315,6 +3394,18 @@ BENCH_END(bc_end_tim)
            ELSE
 #        include "HALO_EM_TRACER_E_5.inc"
            ENDIF
+         ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
+           IF ( (config_flags%tracer_adv_opt /= ORIGINAL .and. config_flags%tracer_adv_opt /= WENO_SCALAR) .and. (rk_step == rk_order-1) ) THEN
+#        include "HALO_EM_TRACER_E_9.inc"
+           ELSE
+#        include "HALO_EM_TRACER_E_7.inc"
+           ENDIF
+         ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+           IF ( (config_flags%tracer_adv_opt /= ORIGINAL .and. config_flags%tracer_adv_opt /= WENO_SCALAR) .and. (rk_step == rk_order-1) ) THEN
+#        include "HALO_EM_TRACER_E_9.inc"
+           ELSE
+#        include "HALO_EM_TRACER_E_9.inc"
+           ENDIF
          ELSE
            WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
            CALL wrf_error_fatal(TRIM(wrf_err_message))
@@ -3332,6 +3423,18 @@ BENCH_END(bc_end_tim)
 #        include "HALO_EM_SCALAR_E_7.inc"
            ELSE
 #        include "HALO_EM_SCALAR_E_5.inc"
+           ENDIF
+         ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
+           IF ( (config_flags%scalar_adv_opt /= ORIGINAL .and. config_flags%scalar_adv_opt /= WENO_SCALAR) .and. (rk_step == rk_order-1) ) THEN
+#        include "HALO_EM_SCALAR_E_9.inc"
+           ELSE
+#        include "HALO_EM_SCALAR_E_7.inc"
+           ENDIF
+         ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+           IF ( (config_flags%scalar_adv_opt /= ORIGINAL .and. config_flags%scalar_adv_opt /= WENO_SCALAR) .and. (rk_step == rk_order-1) ) THEN
+#        include "HALO_EM_SCALAR_E_9.inc"
+           ELSE
+#        include "HALO_EM_SCALAR_E_9.inc"
            ENDIF
          ELSE
            WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
@@ -4250,8 +4353,12 @@ BENCH_END(moist_phys_end_tim)
 #    include "HALO_EM_D3_3.inc"
    ELSE IF ( config_flags%h_mom_adv_order <= 6 .and. config_flags%h_sca_adv_order <= 6 ) THEN
 #    include "HALO_EM_D3_5.inc"
+   ELSE IF ( config_flags%h_mom_adv_order <= 8 .and. config_flags%h_sca_adv_order <= 8 ) THEN
+#    include "HALO_EM_D3_7.inc"
+   ELSE IF ( config_flags%h_mom_adv_order <= 10 .and. config_flags%h_sca_adv_order <= 10 ) THEN
+#    include "HALO_EM_D3_9.inc"
    ELSE 
-      WRITE(wrf_err_message,*)'solve_em: invalid h_mom_adv_order = ',config_flags%h_mom_adv_order
+      WRITE(wrf_err_message,*)'solve_em5: invalid h_mom_adv_order = ',config_flags%h_mom_adv_order
       CALL wrf_error_fatal(TRIM(wrf_err_message))
    ENDIF
 #  include "PERIOD_BDY_EM_D3.inc"
@@ -4595,8 +4702,12 @@ BENCH_END(bc_2d_tim)
 #    include "HALO_EM_E_3.inc"
    ELSE IF ( config_flags%h_mom_adv_order <= 6 .and. config_flags%h_sca_adv_order <= 6 ) THEN
 #    include "HALO_EM_E_5.inc"
+   ELSE IF ( config_flags%h_mom_adv_order <= 8 .and. config_flags%h_sca_adv_order <= 8 ) THEN
+#    include "HALO_EM_E_7.inc"
+   ELSE IF ( config_flags%h_mom_adv_order <= 10 .and. config_flags%h_sca_adv_order <= 10 ) THEN
+#    include "HALO_EM_E_9.inc"
    ELSE
-     WRITE(wrf_err_message,*)'solve_em: invalid h_mom_adv_order = ',config_flags%h_mom_adv_order
+     WRITE(wrf_err_message,*)'solve_em6: invalid h_mom_adv_order = ',config_flags%h_mom_adv_order
      CALL wrf_error_fatal(TRIM(wrf_err_message))
    ENDIF
 #endif
@@ -4611,8 +4722,12 @@ BENCH_END(bc_2d_tim)
 #      include "HALO_EM_MOIST_E_3.inc"
      ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
 #      include "HALO_EM_MOIST_E_5.inc"
+     ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
+#      include "HALO_EM_MOIST_E_7.inc"
+     ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#      include "HALO_EM_MOIST_E_9.inc"
      ELSE
-       WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
+       WRITE(wrf_err_message,*)'solve_em7: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
        CALL wrf_error_fatal(TRIM(wrf_err_message))
      ENDIF
    ENDIF
@@ -4625,8 +4740,12 @@ BENCH_END(bc_2d_tim)
 #      include "HALO_EM_CHEM_E_3.inc"
      ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
 #      include "HALO_EM_CHEM_E_5.inc"
+     ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
+#      include "HALO_EM_CHEM_E_7.inc"
+     ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#      include "HALO_EM_CHEM_E_9.inc"
      ELSE
-       WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
+       WRITE(wrf_err_message,*)'solve_em8: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
        CALL wrf_error_fatal(TRIM(wrf_err_message))
      ENDIF
    ENDIF
@@ -4639,8 +4758,12 @@ BENCH_END(bc_2d_tim)
 #      include "HALO_EM_TRACER_E_3.inc"
      ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
 #      include "HALO_EM_TRACER_E_5.inc"
+     ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
+#      include "HALO_EM_TRACER_E_7.inc"
+     ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#      include "HALO_EM_TRACER_E_9.inc"
      ELSE
-       WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
+       WRITE(wrf_err_message,*)'solve_em9: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
        CALL wrf_error_fatal(TRIM(wrf_err_message))
      ENDIF
    ENDIF
@@ -4653,8 +4776,12 @@ BENCH_END(bc_2d_tim)
 #      include "HALO_EM_SCALAR_E_3.inc"
      ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
 #      include "HALO_EM_SCALAR_E_5.inc"
+     ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
+#      include "HALO_EM_SCALAR_E_7.inc"
+     ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#      include "HALO_EM_SCALAR_E_9.inc"
      ELSE
-       WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
+       WRITE(wrf_err_message,*)'solve_em10: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
        CALL wrf_error_fatal(TRIM(wrf_err_message))
      ENDIF
    ENDIF

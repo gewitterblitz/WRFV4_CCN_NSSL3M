@@ -1358,11 +1358,19 @@ endif
 !--------------------------------------------------------------
 
 #ifdef DM_PARALLEL
+IF ( config_flags%h_mom_adv_order <= 6 .and. config_flags%h_sca_adv_order <= 6 ) THEN
 # include "HALO_EM_INIT_1.inc"
 # include "HALO_EM_INIT_2.inc"
 # include "HALO_EM_INIT_3.inc"
 # include "HALO_EM_INIT_4.inc"
 # include "HALO_EM_INIT_5.inc"
+ELSE
+# include "HALO_EM_INIT_1HO.inc"
+# include "HALO_EM_INIT_2HO.inc"
+# include "HALO_EM_INIT_3HO.inc"
+# include "HALO_EM_INIT_4HO.inc"
+# include "HALO_EM_INIT_5HO.inc"
+ENDIF
       IF ( config_flags%sf_ocean_physics .EQ. PWP3DSCHEME ) THEN
 # include "HALO_EM_INIT_6.inc"
       END IF

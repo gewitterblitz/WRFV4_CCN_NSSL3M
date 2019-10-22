@@ -45,7 +45,8 @@ CONTAINS
             ,halo_em_phys_pbl_sub,halo_em_phys_shcu_sub &
             ,halo_em_fdda_sub,halo_em_phys_diffusion_sub,halo_em_tke_3_sub &
             ,halo_em_tke_5_sub,halo_obs_nudge_sub,period_bdy_em_a1_sub,period_bdy_em_phy_bc_sub &
-            ,period_bdy_em_fdda_bc_sub,period_bdy_em_chem_sub,halo_em_phys_cu_sub,halo_em_helicity_sub
+            ,period_bdy_em_fdda_bc_sub,period_bdy_em_chem_sub,halo_em_phys_cu_sub,halo_em_helicity_sub &
+            ,halo_em_tke_7_sub,halo_em_tke_9_sub
 #endif
 
     USE module_driver_constants
@@ -651,6 +652,10 @@ ENDIF
 #       include "HALO_EM_TKE_3.inc"
        ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
 #       include "HALO_EM_TKE_5.inc"
+       ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
+#       include "HALO_EM_TKE_7.inc"
+       ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
+#       include "HALO_EM_TKE_9.inc"
        ELSE
          WRITE(wrf_err_message,*)'solve_em: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
          CALL wrf_error_fatal(TRIM(wrf_err_message))
