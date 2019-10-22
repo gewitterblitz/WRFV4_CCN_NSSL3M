@@ -369,7 +369,7 @@ SUBROUTINE solve_em ( grid , config_flags  &
      CALL wrf_debug ( 200 , ' call HALO_RK_tracer' )
      IF      ( config_flags%h_sca_adv_order <= 4 ) THEN
 #      include "HALO_EM_TRACER_E_3.inc"
-     ELSE IF ( config_flags%h_sca_adv_order <= 16 ) THEN
+     ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
 #      include "HALO_EM_TRACER_E_5.inc"
      ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
 #      include "HALO_EM_TRACER_E_7.inc"
@@ -3302,7 +3302,7 @@ BENCH_END(bc_end_tim)
          ELSE
 #         include "HALO_EM_TKE_3.inc"
          ENDIF
-       ELSE IF ( config_flags%h_sca_adv_order <= 16 ) THEN
+       ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
          IF ( (config_flags%tke_adv_opt /= ORIGINAL .and. config_flags%tke_adv_opt /= WENO_SCALAR) .and. (rk_step == rk_order-1) ) THEN
 #         include "HALO_EM_TKE_7.inc"
          ELSE
