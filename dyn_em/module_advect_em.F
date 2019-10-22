@@ -113,6 +113,8 @@ END SUBROUTINE column
 !----------------------------------------------------------------
 #elif ( ! defined(ADVECT_KERNEL) )
 
+#define WENOZTF .false.
+#define EPSVAL 1.0d-40
 MODULE module_advect_em
 
   USE module_bc
@@ -7958,12 +7960,12 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
     real               :: qim4, qim3, qim2, qim1, qi, qip1, qip2, qip3, qip4
     double precision   :: beta0, beta1, beta2, beta3, beta4
     double precision   ::  f0, f1, f2, f3, f4, wi0, wi1, wi2, wi3, wi4, sumwk, suma, tau5
-    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-40
+    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=EPSVAL
     double precision, parameter    :: c04 = 1.d0/35.d0, c14 = 12.d0/35.d0, c24 = 18.d0/35.d0, c34 = 4.d0/35.d0
     double precision, parameter    :: c05 = 1.d0/126.d0, c15 = 10.d0/63.d0, c25 = 10.d0/21.d0
     double precision, parameter    :: c35 = 20.d0/63.d0, c45 = 5.d0/126.d0
     integer, parameter :: pw = 2, pw7 = 2, pw9 = 2
-    logical, parameter :: wenoz = .true.
+    logical, parameter :: wenoz = WENOZTF
 
 
 ! definition of flux operators, 3rd, 4th, 5th or 6th order
@@ -9209,9 +9211,8 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
     
          sumwk = wi0 + wi1 + wi2 + wi3 + wi4
     
-    
          vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
-
+    
          ENDDO
          ENDDO
          
@@ -9246,7 +9247,7 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
              ELSE
                loop = 4
                klev(1) = kts+3
-               klev(2) = ktf+4
+               klev(2) = kts+4
                klev(3) = ktf-3
                klev(4) = ktf-2
              ENDIF
@@ -9427,12 +9428,12 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
     real               :: qim4, qim3, qim2, qim1, qi, qip1, qip2, qip3, qip4
     double precision   :: beta0, beta1, beta2, beta3, beta4
     double precision   ::  f0, f1, f2, f3, f4, wi0, wi1, wi2, wi3, wi4, sumwk, suma, tau5
-    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-40
+    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=EPSVAL
     double precision, parameter    :: c04 = 1.d0/35.d0, c14 = 12.d0/35.d0, c24 = 18.d0/35.d0, c34 = 4.d0/35.d0
     double precision, parameter    :: c05 = 1.d0/126.d0, c15 = 10.d0/63.d0, c25 = 10.d0/21.d0
     double precision, parameter    :: c35 = 20.d0/63.d0, c45 = 5.d0/126.d0
     integer, parameter :: pw = 2, pw7 = 2, pw9 = 2
-    logical, parameter :: wenoz = .true.
+    logical, parameter :: wenoz = WENOZTF
 
 ! definition of flux operators, 3rd, 4th, 5th or 6th order
 
@@ -10594,6 +10595,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
          ENDDO
          ENDDO
 
+
          ELSEIF ( vert_order == 7 ) THEN
 
          DO k=kts+4,ktf-3
@@ -10657,7 +10659,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
     
          sumwk = wi0 + wi1 + wi2 + wi3
         
-         fqx(i,k,j) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
+         fqz(i,k,j) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
 
            fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
          ENDDO
@@ -10751,7 +10753,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
          sumwk = wi0 + wi1 + wi2 + wi3 + wi4
     
     
-         fqx(i,k,j) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
+         fqz(i,k,j) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
 
            fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
          ENDDO
@@ -10812,7 +10814,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
              ELSE
                loop = 4
                klev(1) = kts+3
-               klev(2) = ktf+4
+               klev(2) = kts+4
                klev(3) = ktf-3
                klev(4) = ktf-2
              ENDIF
@@ -12483,12 +12485,12 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
     real               :: qim4, qim3, qim2, qim1, qi, qip1, qip2, qip3, qip4
     double precision   :: beta0, beta1, beta2, beta3, beta4
     double precision   ::  f0, f1, f2, f3, f4, wi0, wi1, wi2, wi3, wi4, sumwk, suma, tau5
-    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-40
+    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=EPSVAL
     double precision, parameter    :: c04 = 1.d0/35.d0, c14 = 12.d0/35.d0, c24 = 18.d0/35.d0, c34 = 4.d0/35.d0
     double precision, parameter    :: c05 = 1.d0/126.d0, c15 = 10.d0/63.d0, c25 = 10.d0/21.d0
     double precision, parameter    :: c35 = 20.d0/63.d0, c45 = 5.d0/126.d0
     integer, parameter :: pw = 2, pw7 = 2, pw9 = 2
-    logical, parameter :: wenoz = .true.
+    logical, parameter :: wenoz = WENOZTF
 
    INTEGER :: horz_order, vert_order
 
@@ -13692,7 +13694,7 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
              ELSE
                loop = 4
                klev(1) = kts+3
-               klev(2) = ktf+4
+               klev(2) = kts+4
                klev(3) = ktf-3
                klev(4) = ktf-2
              ENDIF
@@ -13840,12 +13842,12 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
     real               :: qim4, qim3, qim2, qim1, qi, qip1, qip2, qip3, qip4
     double precision   :: beta0, beta1, beta2, beta3, beta4
     double precision   ::  f0, f1, f2, f3, f4, wi0, wi1, wi2, wi3, wi4, sumwk, suma, tau5
-    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-40
+    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=EPSVAL
     double precision, parameter    :: c04 = 1.d0/35.d0, c14 = 12.d0/35.d0, c24 = 18.d0/35.d0, c34 = 4.d0/35.d0
     double precision, parameter    :: c05 = 1.d0/126.d0, c15 = 10.d0/63.d0, c25 = 10.d0/21.d0
     double precision, parameter    :: c35 = 20.d0/63.d0, c45 = 5.d0/126.d0
     integer, parameter :: pw = 2, pw7 = 2, pw9 = 2
-    logical, parameter :: wenoz = .true.
+    logical, parameter :: wenoz = WENOZTF
 
    REAL    :: mrdx, mrdy, ub, vb, uw, vw, dup, dum
    REAL , DIMENSION(its:ite, kts:kte) :: vflux
@@ -14943,46 +14945,58 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
            vel=0.5*(rom(i,k,j)+rom(i,k,j-1))
 
          IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip3 = v(i,k+2,j)
             qip2 = v(i,k+1,j)
             qip1 = v(i,k  ,j)
             qi   = v(i,k-1,j)
             qim1 = v(i,k-2,j)
             qim2 = v(i,k-3,j)
+            qim3 = v(i,k-4,j)
           ELSE
+            qip3 = v(i,k-3,j)
             qip2 = v(i,k-2,j)
             qip1 = v(i,k-1,j)
             qi   = v(i,k  ,j)
             qim1 = v(i,k+1,j)
             qim2 = v(i,k+2,j)
+            qim3 = v(i,k+3,j)
          ENDIF
     
-         f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
-         f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
-         f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
+         f0 = -1./4.*qim3  + 13./12.*qim2 - 23./12.*qim1 + 25./12.*qi
+         f1 =  1./12.*qim2 -  5./12.*qim1 + 13./12.*qi   + 1./4.*qip1
+         f2 = -1./12.*qim1 +  7./12.*qi   +  7./12.*qip1 - 1./12.*qip2
+         f3 =  1./4.*qi    + 13./12.*qip1 -  5./12.*qip2 + 1./12.*qip3
     
-         beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
-         beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
-         beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+         beta0 = qim3*(547.*qim3 - 3882.*qim2 + 4642.*qim1 - 1854.*qi) +  &
+                 qim2*(7043.*qim2 - 17246.*qim1 + 7042.*qi) + qim1*(11003.*qim1 - 9402.*qi) + 2107.*qi**2
+         beta1 = qim2*(267.*qim2 - 1642.*qim1 +1602.*qi - 494.*qip1) +   &
+                  qim1*(2843.*qim1 - 5966.*qi + 1922.*qip1) + qi*(3443.*qi - 2522.*qip1)+547.*qip1**2
+         beta2 = qim1*(547.*qim1 - 2522.*qi + 1922.*qip1 - 494.*qip2) +   &
+                 qi*(3443.*qi - 5966.*qip1 + 1602.*qip2) + qip1*(2843.*qip1 - 1642.*qip2) + 267.*qip2**2
+         beta3 = qi*(2107.*qi - 9402.*qip1 + 7042.*qip2 - 1854.*qip3) +  &
+                 qip1*(11003.*qip1 - 17246.*qip2 + 4642.*qip3) + qip2*(7043.*qip2 - 3882.*qip3) + 547.*qip3**2
     
          IF ( wenoz ) THEN
          
-         tau5 = abs(beta0-beta2)
+         tau5 = abs(beta0-beta3)
          
-         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
-         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
-         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         wi0 = c04*(1.+(tau5/(beta0+eps))**pw7)
+         wi1 = c14*(1.+(tau5/(beta1+eps))**pw7)
+         wi2 = c24*(1.+(tau5/(beta2+eps))**pw7)
+         wi3 = c34*(1.+(tau5/(beta3+eps))**pw7)
          
          ELSE
          
-         wi0 = gi0 / (eps + beta0)**pw
-         wi1 = gi1 / (eps + beta1)**pw
-         wi2 = gi2 / (eps + beta2)**pw
+         wi0 = c04 / (eps + beta0)**pw
+         wi1 = c14 / (eps + beta1)**pw
+         wi2 = c24 / (eps + beta2)**pw
+         wi3 = c34 / (eps + beta3)**pw
          
          ENDIF
     
-         sumwk = wi0 + wi1 + wi2
-    
-          vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+         sumwk = wi0 + wi1 + wi2 + wi3
+        
+         vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3) / sumwk
 
          ENDDO
          ENDDO
@@ -14994,46 +15008,84 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
            vel=0.5*(rom(i,k,j)+rom(i,k,j-1))
 
          IF( -vel*sign(1,time_step) .ge. 0.0 ) THEN
+            qip4 = v(i,k+3,j)
+            qip3 = v(i,k+2,j)
             qip2 = v(i,k+1,j)
             qip1 = v(i,k  ,j)
             qi   = v(i,k-1,j)
             qim1 = v(i,k-2,j)
             qim2 = v(i,k-3,j)
+            qim3 = v(i,k-4,j)
+            qim4 = v(i,k-5,j)
           ELSE
+            qip4 = v(i,k-4,j)
+            qip3 = v(i,k-3,j)
             qip2 = v(i,k-2,j)
             qip1 = v(i,k-1,j)
             qi   = v(i,k  ,j)
             qim1 = v(i,k+1,j)
             qim2 = v(i,k+2,j)
+            qim3 = v(i,k+3,j)
+            qim4 = v(i,k+4,j)
          ENDIF
     
-         f0 =  1./3.*qim2 - 7./6.*qim1 + 11./6.*qi
-         f1 = -1./6.*qim1 + 5./6.*qi   + 1./3. *qip1
-         f2 =  1./3.*qi   + 5./6.*qip1 - 1./6. *qip2
-    
-         beta0 = 13./12.*(qim2 - 2.*qim1 + qi  )**2 + 1./4.*(qim2 - 4.*qim1 + 3.*qi)**2
-         beta1 = 13./12.*(qim1 - 2.*qi   + qip1)**2 + 1./4.*(qim1 - qip1)**2
-         beta2 = 13./12.*(qi   - 2.*qip1 + qip2)**2 + 1./4.*(qip2 - 4.*qip1 + 3.*qi)**2
+         f0 =   1./5.*qim4  - 21./20.*qim3 + 137./60.*qim2 - 163./60.*qim1  + 137./60.*qi
+         f1 = -1./20.*qim3  + 17./60.*qim2 -  43./60.*qim1 +  77./60.*qi    +    1./5.*qip1
+         f2 =  1./30.*qim2  - 13./60.*qim1 +  47./60.*qi   +   9./20.*qip1  -   1./20.*qip2
+         f3 = -1./20.*qim1  +  9./20.*qi   +  47./60.*qip1 -  13./60.*qip2  +   1./30.*qip3
+         f4 =   1./5.*qi    + 77./60.*qip1 -  43./60.*qip2 +  17./60.*qip3  -   1./20.*qip4
+
+
+      beta0 = qim4*(22658.*qim4  - 208501.*qim3 + 364863.*qim2  - 288007.*qim1 + 86329.*qi ) &
+            + qim3*(482963.*qim3  - 1704396.*qim2 + 1358458.*qim1 - 411487.*qi ) &
+            + qim2*(1521393.*qim2 - 2462076.*qim1 + 758823.*qi )  &
+            + qim1*(1020563.*qim1  - 649501.*qi ) + 107918.*qi**2
+
+      beta1 = qim3*(6908*qim3 - 60871*qim2 + 99213*qim1 - 70237*qi + 18079*qip1) &
+            + qim2*(138563*qim2 - 464976*qim1 + 337018*qi - 88297*qip1) &
+            + qim1*(406293*qim1 - 611976*qi + 165153*qip1) &
+            + qi  *(242723*qi - 140251*qip1 ) + 22658*qip1**2
+
+     beta2 = qim2* (6908*qim2 - 51001*qim1 + 67923*qi - 38947*qip1 + 8209*qip2) &
+           + qim1*(104963*qim1 - 299076*qi + 179098*qip1 - 38947*qip2) &
+           + qi  *(231153*qi - 299076*qip1 + 67923*qip2) &
+           + qip1*(104963*qip1 - 51001*qip2 ) + 6908*qip2**2
+
+     beta3 = qim1* (22658*qim1 - 140251*qi + 165153*qip1 - 88297*qip2 + 18079*qip3 )  &
+           + qi * (242723*qi - 611976*qip1 + 337018*qip2 - 70237*qip3) &
+           + qip1*(406293*qip1 - 464976*qip2 + 99213*qip3) &
+           + qip2*(138563*qip2 - 60871*qip3 ) + 6908*qip3**2
+
+     beta4 = qi*  (107918*qi - 649501*qip1 + 758823*qip2 - 411487*qip2 + 86329*qip4) &
+           + qip1*(1020563*qip1 - 2462076*qip2 + 1358458*qip3 - 288007*qip4) &
+           + qip2*(1521393*qip2 - 1704396*qip3 + 364863*qip4) &
+           + qip3*(482963*qip3 - 208501*qip4 ) + 22658*qip4**2
+
     
          IF ( wenoz ) THEN
          
-         tau5 = abs(beta0-beta2)
+         tau5 = abs(beta0-beta4)
          
-         wi0 = gi0*(1.+(tau5/(beta0+eps))**pw)
-         wi1 = gi1*(1.+(tau5/(beta1+eps))**pw)
-         wi2 = gi2*(1.+(tau5/(beta2+eps))**pw)
+         wi0 = c05*(1.+(tau5/(beta0+eps))**pw9)
+         wi1 = c15*(1.+(tau5/(beta1+eps))**pw9)
+         wi2 = c25*(1.+(tau5/(beta2+eps))**pw9)
+         wi3 = c35*(1.+(tau5/(beta3+eps))**pw9)
+         wi4 = c45*(1.+(tau5/(beta4+eps))**pw9)
          
          ELSE
-         
-         wi0 = gi0 / (eps + beta0)**pw
-         wi1 = gi1 / (eps + beta1)**pw
-         wi2 = gi2 / (eps + beta2)**pw
+
+         wi0 = c05 / (eps + beta0)**pw
+         wi1 = c15 / (eps + beta1)**pw
+         wi2 = c25 / (eps + beta2)**pw
+         wi3 = c35 / (eps + beta3)**pw
+         wi4 = c45 / (eps + beta4)**pw
          
          ENDIF
     
-         sumwk = wi0 + wi1 + wi2
+         sumwk = wi0 + wi1 + wi2 + wi3 + wi4
     
-          vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2) / sumwk
+    
+         vflux(i,k) = vel * (wi0*f0 + wi1*f1 + wi2*f2 + wi3*f3 + wi4*f4) / sumwk
 
          ENDDO
          ENDDO
@@ -15067,7 +15119,7 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
              ELSE
                loop = 4
                klev(1) = kts+3
-               klev(2) = ktf+4
+               klev(2) = kts+4
                klev(3) = ktf-3
                klev(4) = ktf-2
              ENDIF
@@ -15223,12 +15275,12 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
     real               :: qim4, qim3, qim2, qim1, qi, qip1, qip2, qip3, qip4
     double precision   :: beta0, beta1, beta2, beta3, beta4
     double precision   ::  f0, f1, f2, f3, f4, wi0, wi1, wi2, wi3, wi4, sumwk, suma, tau5
-    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=1.0d-40
+    double precision, parameter    :: gi0 = 1.d0/10.d0, gi1 = 6.d0/10.d0, gi2 = 3.d0/10.d0, eps=EPSVAL
     double precision, parameter    :: c04 = 1.d0/35.d0, c14 = 12.d0/35.d0, c24 = 18.d0/35.d0, c34 = 4.d0/35.d0
     double precision, parameter    :: c05 = 1.d0/126.d0, c15 = 10.d0/63.d0, c25 = 10.d0/21.d0
     double precision, parameter    :: c35 = 20.d0/63.d0, c45 = 5.d0/126.d0
     integer, parameter :: pw = 2, pw7 = 2, pw9 = 2
-    logical, parameter :: wenoz = .true.
+    logical, parameter :: wenoz = WENOZTF
 
 
    INTEGER :: horz_order, vert_order
@@ -17092,7 +17144,7 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
              ELSE
                loop = 4
                klev(1) = kts+3
-               klev(2) = ktf+4
+               klev(2) = kts+4
                klev(3) = ktf-2
                klev(4) = ktf-1
              ENDIF
