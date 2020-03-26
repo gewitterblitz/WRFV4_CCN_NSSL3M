@@ -1402,9 +1402,9 @@ BENCH_START(shcu_driver_tim)
 #      include "HALO_EM_CHEM_E_3.inc"
          ELSE IF ( config_flags%h_sca_adv_order <= 6 ) THEN
 #      include "HALO_EM_CHEM_E_5.inc"
-         ELSE IF ( config_flags%h_mom_adv_order <= 8 ) THEN
+         ELSE IF ( config_flags%h_sca_adv_order <= 8 ) THEN
 #      include "HALO_EM_CHEM_E_7.inc"
-         ELSE IF ( config_flags%h_mom_adv_order <= 10 ) THEN
+         ELSE IF ( config_flags%h_sca_adv_order <= 10 ) THEN
 #      include "HALO_EM_CHEM_E_9.inc"
          ELSE
             WRITE(message,*)'module_first_rk_step_part1: invalid h_sca_adv_order = ',config_flags%h_sca_adv_order
