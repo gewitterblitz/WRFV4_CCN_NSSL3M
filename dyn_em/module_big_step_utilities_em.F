@@ -1746,7 +1746,7 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
 
 !--------------------------
 
-   ELSE IF (advective_order <= 6) THEN
+   ELSE ! IF (advective_order <= 6) THEN
 
 !!! NOTE: this branch has been looked at and fixed with changes for overdecomposition
 !!!       the branches covering the other advective_order cases have not.  20090923. JM
