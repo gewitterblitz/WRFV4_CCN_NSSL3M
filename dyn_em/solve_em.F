@@ -3603,6 +3603,7 @@ BENCH_START(micro_driver_tim)
       &        ,RHO=grid%rho       ,SPEC_ZONE=grid%spec_zone              &
       &        ,SR=grid%sr              ,TH=th_phy                        &
       &        ,refl_10cm=grid%refl_10cm                                  & ! hm, 9/22/09 for refl
+      &        ,VT_DBZ_WT=grid%vt_dbz_wt                                  & ! dcd 
       &        ,vmi3d=grid%vmi3d                                          & ! for P3
       &        ,di3d=grid%di3d                                            & ! for P3
       &        ,rhopo3d=grid%rhopo3d                                      & ! for P3

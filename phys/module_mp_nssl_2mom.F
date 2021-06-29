@@ -1754,6 +1754,8 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
       
       logical :: f_cnatmp
 
+      integer :: kediagloc
+      integer :: iunit
 
 
 ! -------------------------------------------------------------------
@@ -2241,8 +2243,11 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
    ! calc dbz
       
       IF ( .true. ) THEN
+!      call radardd02(nx,ny,nz,nor,na,an,t0,         &
+!     &    dbz2d,dn1,nz,cnoh,rho_qh,ipconc, 0)
+      kediagloc = nz
       call radardd02(nx,ny,nz,nor,na,an,t0,         &
-     &    dbz2d,dn1,nz,cnoh,rho_qh,ipconc, 0)
+     &    dbz2d,dn1,nz,cnoh,rho_qh,ipconc,kediagloc, 0, vzflag0, vzf2d)
       ENDIF ! .false.
 
      
@@ -6260,13 +6265,618 @@ END SUBROUTINE nssl_2mom_driver
 ! #####################################################################
 ! #####################################################################
 
+!
+! ##############################################################################
+!
+!  subroutine to calculate fall speeds of hydrometeors
+!
+
+      subroutine ziegfall(nx,ny,nz,nor,norz,na,dtp,jgs, &
+     &  xvt,                                                    &
+     &  an,dn,ipconc0,t0,t7,cwccn0,cwmasn,cwmasx,cimn0,cimx0,       &
+     &  cwradn,                                   &
+     &  qxmin,xdnmx,xdnmn,cdx,cno,xdn0,ccwmx0,xvmn,xvmx,  &
+     &  itype1x,itype2x,infdo)
+
+! 12.16.2005: .F version use in transitional SWM model
+!
+! 10.10.2003: Added cimn and cimx to setting for cci and cip.
+!
+! TO DO LIST:
+!
+! need to set up values for:
+!     :  cipdia,cidia,cwdia,cwmas,vtwbar,
+!     :  rho0,temcg,cip,cci
+!
+! and need to put fallspeed values in cwvt etc.
+!
+
+      implicit none
+
+      integer ng1
+      parameter(ng1 = 1)
+
+      integer nx,ny,nz,nor,norz,ngt,jgs,na
+      real an(-nor+ng1:nx+nor,-nor+ng1:ny+nor,-nor+ng1:nz+nor,na)
+      real dn(-nor+ng1:nx+nor,-nor+ng1:ny+nor,-nor+ng1:nz+nor)
+      real t0(-nor+ng1:nx+nor,-nor+ng1:ny+nor,-nor+ng1:nz+nor)
+      real t7(-nor+ng1:nx+nor,-nor+ng1:ny+nor,-nor+ng1:nz+nor)
+!      real vt(nx,nz)
+      real dtp,dtz1
+
+      real ccwmx0
+      real cwc1(nz), cwnccn(nz)
+!      real qtmp1(nx,nz),qtmp2(nx,nz)
+!      real cmax
+!      real xfall(nx,ny)
+
+      integer ndebugzf
+      parameter (ndebugzf = 0)
+      integer idx
+
+      integer ix,jy,kz,i,j,k,item,il
+      integer itype1x,itype2x,infdo
+!
+!  include file for mix ratio and charge indices
+!
+!
+      real xvt(nx,nz+1,3,lc:lhab) ! 1=mass-weighted, 2=number-weighted
+
+      real qxmin(lc:lhab)
+      real xdn0(lc:lhab)
+      real xvmn(lc:lhab), xvmx(lc:lhab)
+
+      real xdnmx(lc:lhab), xdnmn(lc:lhab)
+
+!
+!   drag coefficients
+!
+      real cdx(lc:lhab)
+!
+! Fixed intercept values for single moment scheme
+!
+      real cno(lc:lhab)
+
+      real cwccn0,cwmasn,cwmasx,cimn0,cimx0,cwradn
+      real cwc0
+
+      integer nxmpb,nzmpb,nxz,numgs,inumgs
+      integer kstag,istag
+      parameter (kstag=1, istag=1)
+
+      integer ngs,ngscnt,mgs,ipconc0
+      parameter ( ngs=500 )
+      integer igs(ngs),kgs(ngs)
+
+      real :: qx(ngs,lv:lhab)
+      real :: qxw(ngs,ls:lhab)
+      real :: cx(ngs,lc:lhab)
+      real :: xv(ngs,lc:lhab)
+      real :: vtxbar(ngs,lc:lhab,3)
+      real :: xmas(ngs,lc:lhab)
+      real :: xdn(ngs,lc:lhab)
+      real :: cdxgs(ngs,lc:lhab)
+      real :: xdia(ngs,lc:lhab,3)
+      real :: vx(ngs,li:lhab)
+      real :: alpha(ngs,lc:lhab)
+      real :: zx(ngs,lr:lhab)
+      
+      real axx(ngs,lh:lhab), bxx(ngs,lh:lhab)
+      real axh(ngs),bxh(ngs),axhl(ngs),bxhl(ngs)
+      real rho0(ngs),temcg(ngs)
+!     :  qcw(ngs),qrw(ngs),qci(ngs),qip(ngs),qir(ngs),
+!     :  qsw(ngs),qgl(ngs),qgm(ngs),
+!     :  qgh(ngs),qhw(ngs),qhl(ngs),qfw(ngs),qwv(ngs),
+!     :  qvs(ngs)
+
+!      real ccw(ngs),cci(ngs),crw(ngs),csw(ngs),chw(ngs) 
+!      real cgl(ngs),cgh(ngs),cfw(ngs)
+!      real cgm(ngs),chl(ngs),cir(ngs)
+!      real cip(ngs)
+
+      real temg(ngs)
+      
+      real rhovt(ngs)
+!     : , cirdn(ngs),cwdn(ngs),rwdn(ngs),
+!     : swdn(ngs), gldn(ngs),gmdn(ngs),ghdn(ngs),
+!     : fwdn(ngs), hwdn(ngs), hldn(ngs), cipdn(ngs),cidn(ngs)
+
+!      real cirdia(ngs), rwdia(ngs), swdia(ngs),gldia(ngs),
+!     : gmdia(ngs), ghdia(ngs), hwdia(ngs),hldia(ngs),fwdia(ngs)
+!      real cipdia(ngs),cidia(ngs)
+      
+!      real rwrad(ngs)
+
+!      real vtirbar(ngs),vtrbar(ngs),vtsbar(ngs),vtglbar(ngs),
+!     :  vtgmbar(ngs), vtghbar(ngs),vtfbar(ngs),vthbar(ngs),
+!     :  vthlbar(ngs) ,vtipbar(ngs),vtibar(ngs)
+     
+!      real vtrnbar(ngs)
+
+      
+!      real ciplen(ngs),cilen(ngs)
+      
+      real cwnc(ngs),cinc(ngs)
+      real fadvisc(ngs),cwdia(ngs),cipmas(ngs)
+      
+      real cimasn,cimasx,cnina(ngs),cimas(ngs)
+      
+      real cnostmp(ngs)
+!      real xvr(ngs),rwmas(ngs)
+!      real xvs(ngs),xvgl(ngs),xvgm(ngs),xvgh(ngs),xvf(ngs)
+!      real xvh(ngs),xvhl(ngs)
+!      real swmas(ngs),glmas(ngs),gmmas(ngs),ghmas(ngs)
+!      real fwmas(ngs),hwmas(ngs),hlmas(ngs)
+!      real mwfac
+!      parameter ( mwfac = 6.0**(1./3.) ) ! factor for mass-weighted rain volume diameter
+
+!
+
+      real poo, cp608
+      real dnz00, rho00, cs, ds
+      real pii, qccrit, qscrit
+!
+! intercepts
+!
+!
+!  density maximums and minimums
+!
+      real rwdnmx, cwdnmx, cidnmx, xidnmx
+      real swdnmx, gldnmx, gmdnmx, ghdnmx, fwdnmx, hwdnmx, hldnmx
+!
+      real rwdnmn, cwdnmn, xidnmn, cidnmn
+      real swdnmn, gldnmn, gmdnmn, ghdnmn, fwdnmn, hwdnmn, hldnmn
+!
+!  constants
+!
+      real c1f3
+!
+!  general constants for microphysics
+!
+       real tfr, advisc0
+
+! 
+! Miscellaneous
+!
+!      character*80 infile, outfile
+!      integer ifile
+      integer ihabdo
+      parameter(ihabdo = 0)
+      integer ierr
+      
+      logical flag
+      logical ldovol, ldoliq
+      integer lvol(lc:lhab)
+      integer ln(lc:lhab)
+      integer lz(lc:lhab)
+      integer lliq(li:lhab)
+      
+      real chw, qr, z, rd, alp, z1, g1, vr, nrx, tmp
+      
+      real vtmax
+
+
+!-----------------------------------------------------------------------------
+! MPI LOCAL VARIABLES 
+
+      integer :: ixb, jyb, kzb
+      integer :: ixe, jye, kze
+
+      logical :: debug_mpi = .false.
+
+
+      if (ndebugzf .gt. 0 ) write(0,*) "ZIEGFALL: ENTERED SUBROUTINE"
+
+! #####################################################################
+! BEGIN EXECUTABLE
+! #####################################################################
+!
+
+!  constants
+!
+      ldovol = .false.
+      lvol(:) = 0
+      IF ( lvi .gt. 1 ) lvol(li) = lvi
+      IF ( lvs .gt. 1 ) lvol(ls) = lvs
+      IF ( lvh .gt. 1 ) lvol(lh) = lvh
+      IF ( lhl .gt. 1 .and. lvhl .gt. 1 ) lvol(lhl) = lvhl
+      
+      
+      IF ( li .gt. 1 ) THEN
+      DO il = li,lhab
+        ldovol = ldovol .or. ( lvol(il) .gt. 1 )
+      ENDDO
+      ENDIF
+
+      ln(lc) = lnc
+      ln(lr) = lnr
+      IF ( li > 0 ) THEN
+      ln(li) = lni
+      ln(ls) = lns
+      ln(lh) = lnh
+      ENDIF
+      IF ( lhl .gt. 1 ) ln(lhl) = lnhl
+
+      lz(:) = 0
+      lz(lr) = lzr
+      IF ( li > 0 ) THEN
+      lz(li) = lzi
+      lz(ls) = lzs
+      lz(lh) = lzh
+      ENDIF
+      IF ( lhl .gt. 1 .and. lzhl > 1 ) lz(lhl) = lzhl
+
+      lliq(:) = 0
+      IF ( lsw .gt. 1 ) lliq(ls) = lsw
+      IF ( lhw .gt. 1 ) lliq(lh) = lhw
+      IF ( lhl .gt. 1 .and. lhlw .gt. 1 ) lliq(lhl) = lhlw
+
+      ldoliq = .false.
+      IF ( ls .gt. 1 ) THEN
+      DO il = ls,lhab
+        ldoliq = ldoliq .or. ( lliq(il) .gt. 1 )
+      ENDDO
+      ENDIF
+      
+      poo = 1.0e+05
+      cp608 = 0.608
+      dnz00 = 1.225
+      rho00 = 1.225
+      cs = 4.83607122
+      ds = 0.25
+!  new values for  cs and ds
+      cs = 12.42
+      ds = 0.42
+!      pi = 4.0*atan(1.0)
+      pii = piinv ! 1./pi
+!      pid4 = pi/4.0 
+      qccrit = 2.0e-03
+      qscrit = 6.0e-04
+      cwc0 = pii
+      advisc0 = 1.832e-05
+!
+!  constants
+!
+      c1f3 = 1.0/3.0
+!
+!  general constants for microphysics
+!
+      tfr = 273.15
+!
+!  ci constants in mks units
+!
+      cimasn = 6.88e-13 
+      cimasx = 1.0e-8
+!
+!  Set terminal velocities...
+!    also set drag coefficients
+!
+      jy = jgs
+      nxmpb = 1
+      nzmpb = 1
+      nxz = nx*nz
+      numgs = nxz/ngs + 1
+
+      do inumgs = 1,numgs
+       ngscnt = 0
+
+       do kz = nzmpb,nz
+        do ix = nxmpb,nx
+        flag = .false.
+
+        DO il = lc,lhab
+          flag =  flag .or. ( an(ix,jy,kz,il)  .gt. qxmin(il) ) 
+        ENDDO
+
+        if ( flag ) then
+! load temp quantities
+
+        ngscnt = ngscnt + 1
+        igs(ngscnt) = ix
+        kgs(ngscnt) = kz
+        if ( ngscnt .eq. ngs ) goto 1100
+        end if
+!#ifndef MPI
+        end do !!ix
+!#endif
+        nxmpb = 1
+       end do !! kz
+
+!      if ( jy .eq. (ny-jstag) ) iend = 1
+
+ 1100 continue
+
+      if ( ngscnt .eq. 0 ) go to 9998
+!
+!  set temporaries for microphysics variables
+!
+
+!
+!  Reconstruct various quantities 
+!
+      do mgs = 1,ngscnt
+
+       rho0(mgs) = dn(igs(mgs),jy,kgs(mgs))
+       rhovt(mgs) = Sqrt(rho00/rho0(mgs))
+       temg(mgs) = t0(igs(mgs),jy,kgs(mgs))
+       temcg(mgs) = temg(mgs) - tfr
+
+       fadvisc(mgs) = advisc0*(416.16/(temg(mgs)+120.0))* &
+     &   (temg(mgs)/296.0)**(1.5)
+!
+      end do
+!
+      IF ( ipconc .eq. 0 ) THEN
+      do mgs = 1,ngscnt
+      cnina(mgs) = t7(igs(mgs),jgs,kgs(mgs))
+      end do
+      ENDIF
+
+
+      vtxbar(:,:,:) = 0.0
+      
+      DO il = lv,lhab
+      do mgs = 1,ngscnt
+        qx(mgs,il) = max(an(igs(mgs),jy,kgs(mgs),il), 0.0) 
+      ENDDO
+      end do
+
+!
+!  set concentrations
+!
+      cx(:,:) = 0.0
+      
+      if ( ipconc .ge. 1 .and. li .gt. 1 ) then
+       do mgs = 1,ngscnt
+        cx(mgs,li) = Max(an(igs(mgs),jy,kgs(mgs),lni), 0.0)
+       end do
+      end if
+      if ( ipconc .ge. 2 .and. lc .gt. 1 ) then
+       do mgs = 1,ngscnt
+        cx(mgs,lc) = Max(an(igs(mgs),jy,kgs(mgs),lnc), 0.0)
+!        cx(mgs,lc) = Min( ccwmx, cx(mgs,lc) )
+       end do
+      end if
+      if ( ipconc .ge. 3 .and. lr .gt. 1 ) then
+       do mgs = 1,ngscnt
+        cx(mgs,lr) = Max(an(igs(mgs),jy,kgs(mgs),lnr), 0.0)
+        IF ( qx(mgs,lr) .le. qxmin(lr) ) THEN
+        ELSE
+          cx(mgs,lr) = Max( 0.0, cx(mgs,lr) )
+        ENDIF
+       end do
+      end if
+      if ( ipconc .ge. 4  .and. ls .gt. 1) then
+       do mgs = 1,ngscnt
+        cx(mgs,ls) = Max(an(igs(mgs),jy,kgs(mgs),lns), 0.0)
+        IF ( qx(mgs,ls) .le. qxmin(ls) ) THEN
+        ELSE
+          cx(mgs,ls) = Max( 0.0, cx(mgs,ls) )
+        ENDIF
+       end do
+      end if
+
+      if ( ipconc .ge. 5  .and. lh .gt. 1) then
+       do mgs = 1,ngscnt
+
+        cx(mgs,lh) = Max(an(igs(mgs),jy,kgs(mgs),lnh), 0.0)
+        IF ( qx(mgs,lh) .le. qxmin(lh) ) THEN
+        ELSE
+          cx(mgs,lh) = Max( 0.0, cx(mgs,lh) )
+        ENDIF
+
+       end do
+      ENDIF
+
+      if ( ipconc .ge. 5  .and. lhl .gt. 1) then
+       do mgs = 1,ngscnt
+
+        cx(mgs,lhl) = Max(an(igs(mgs),jy,kgs(mgs),lnhl), 0.0)
+        IF ( qx(mgs,lhl) .le. qxmin(lhl) ) THEN
+!          cx(mgs,lhl) = 0.0
+!        ELSEIF ( cx(mgs,lhl) .eq. 0.0 .and. qx(mgs,lhl) .lt. 3.0*qxmin(lhl) ) THEN
+!          qx(mgs,lhl) = 0.0
+        ELSE
+          cx(mgs,lhl) = Max( 0.0, cx(mgs,lhl) )
+        ENDIF
+
+       end do
+      end if
+       
+      do mgs = 1,ngscnt
+        xdn(mgs,lc) = xdn0(lc)
+        xdn(mgs,lr) = xdn0(lr)
+!        IF ( ls .gt. 1 .and. lvs .eq. 0 ) xdn(mgs,ls) = xdn0(ls)
+!        IF ( lh .gt. 1 .and. lvh .eq. 0 ) xdn(mgs,lh) = xdn0(lh)
+        IF ( li .gt. 1 )  xdn(mgs,li) = xdn0(li)
+        IF ( ls .gt. 1 )  xdn(mgs,ls) = xdn0(ls)
+        IF ( lh .gt. 1 )  xdn(mgs,lh) = xdn0(lh)
+        IF ( lhl .gt. 1 ) xdn(mgs,lhl) = xdn0(lhl)
+      end do
+
+!
+! Set mean particle volume
+!
+      IF ( ldovol ) THEN
+      
+      vx(:,:) = 0.0
+      
+       DO il = li,lhab
+        
+        IF ( lvol(il) .ge. 1 ) THEN
+        
+          DO mgs = 1,ngscnt
+            vx(mgs,il) = Max(an(igs(mgs),jy,kgs(mgs),lvol(il)), 0.0)
+            IF ( vx(mgs,il) .gt. rho0(mgs)*qxmin(il)*1.e-3 .and. qx(mgs,il) .gt. qxmin(il) ) THEN
+              xdn(mgs,il) = Min( xdnmx(il), Max( xdnmn(il), rho0(mgs)*qx(mgs,il)/vx(mgs,il) ) )
+            ENDIF
+          ENDDO
+          
+        ENDIF
+      
+       ENDDO
+      
+      ENDIF
+
+      DO il = lg,lhab
+      DO mgs = 1,ngscnt
+        alpha(mgs,il) = dnu(il)
+      ENDDO
+      ENDDO
+      
+      IF ( imurain == 1 ) THEN
+        alpha(:,lr) = alphar
+      ELSEIF ( imurain == 3 ) THEN
+        alpha(:,lr) = xnu(lr)
+      ENDIF
+
+       
+
+      cnostmp(:) = cno(ls)
+      IF ( ipconc < 1 .and. lwsm6 ) THEN
+        DO mgs = 1,ngscnt
+          tmp = Min( 0.0, temcg(mgs) )
+          cnostmp(mgs) = Min( 2.e8, 2.e6*exp(0.12*tmp) )
+        ENDDO
+      ENDIF
+
+       
+
+!
+!  Set density
+!
+      if (ndebugzf .gt. 0 ) write(0,*)  'ZIEGFALL: call setvtz'
+!
+!      SUBROUTINE setvtz(ngscnt,qx,qxmin,qxw,cx,rho0,rhovt,xdia,cno,cnostmp, &
+!     &                 xmas,vtxbar,xdn,xvmn0,xvmx0,xv,cdx,cdxgs,            &
+!     &                 ipconc1,ndebug1,ngs,nz,kgs,fadvisc,   &
+!     &                 cwmasn,cwmasx,cwradn,cnina,cimna,cimxa,      &
+!     &                 itype1a,itype2a,temcg,infdo,alpha,ildo,axh,bxh,axhl,bxhl)
+      
+      call setvtz(ngscnt,qx,qxmin,qxw,cx,rho0,rhovt,xdia,cno,cnostmp,   &
+     &                 xmas,vtxbar,xdn,xvmn,xvmx,xv,cdx,cdxgs,        &
+     &                 ipconc,ndebugzf,ngs,nz,kgs,fadvisc, &
+     &                 cwmasn,cwmasx,cwradn,cnina,cimn,cimx,    &
+!     &                 itype1,itype2,temcg,infdo,alpha,0,axx,bxx)
+     &                 itype1,itype2,temcg,infdo,alpha,0,axh,bxh,axhl,bxhl)
+
+!
+! put fall speeds into the x-z arrays
+!
+      DO il = lc,lhab
+      do mgs = 1,ngscnt
+       
+       vtmax = 150.0
+
+       
+       IF ( vtxbar(mgs,il,2) .gt. vtxbar(mgs,il,1)  .or. &
+     &      ( vtxbar(mgs,il,1) .gt. vtxbar(mgs,il,3) .and. vtxbar(mgs,il,3) > 0.0) ) THEN
+          
+          
+!          IF ( qx(mgs,il) > 1.e-4 .and.  &
+!     &        .not. ( il == lr .and. 1.e3*xdia(mgs,il,3) > 5.0 ) ) THEN
+!          write(0,*) 'infdo,mgs = ',infdo,lzr,mgs
+!          write(0,*) 'Moment problem with vtxbar for il at i,j,k = ',il,igs(mgs),jy,kgs(mgs)
+!          write(0,*) 'nx,ny,nz,ng = ',nx,ny,nz,nor
+!          write(0,*) 'cwmasn,cwmasx = ',cwmasn,cwmasx
+!          write(0,*) 'vt1,2,3 = ',vtxbar(mgs,il,1),vtxbar(mgs,il,2),vtxbar(mgs,il,3)
+!          write(0,*) 'q,n,d = ', 1.e3*qx(mgs,il),cx(mgs,il),1.e3*xdia(mgs,il,3)
+!          IF ( il .ge. lr  .and. lz(il) > 1 ) write(0,*) 'z = ', zx(mgs,il)
+!          IF ( il .ge. lg .or. il == lr ) THEN
+!            write(0,*) 'alpha = ',alpha(mgs,il)
+!          ENDIF
+!          ENDIF
+          
+          vtxbar(mgs,il,1) = Max( vtxbar(mgs,il,1), vtxbar(mgs,il,2) )
+          vtxbar(mgs,il,3) = Max( vtxbar(mgs,il,3), vtxbar(mgs,il,1) )
+          
+       ENDIF
+
+       
+       IF ( vtxbar(mgs,il,1) .gt. vtmax .or. vtxbar(mgs,il,2) .gt. vtmax .or. &
+     &      vtxbar(mgs,il,3) .gt. vtmax ) THEN
+       
+        IF ( ndebugzf >= 0 .and.  1.e3*qx(mgs,il) > 0.1 ) THEN
+!          write(0,*) 'infdo = ',infdo
+!          write(0,*) 'Problem with vtxbar for il at i,j,k = ',il,igs(mgs),jy,kgs(mgs)
+!          write(0,*) 'nx,ny,nz,ng = ',nx,ny,nz,nor
+!          write(0,*) 'cwmasn,cwmasx = ',cwmasn,cwmasx
+!          write(0,*) 'vt1,2,3 = ',vtxbar(mgs,il,1),vtxbar(mgs,il,2),vtxbar(mgs,il,3)
+!          write(0,*) 'q,n,d = ', 1.e3*qx(mgs,il),cx(mgs,il),1.e3*xdia(mgs,il,3)
+!          IF ( il .ge. lr  .and. lz(il) > 1 ) write(0,*) 'z = ', zx(mgs,il)
+!          IF ( il .ge. lg ) THEN
+!            write(0,*) 'alpha = ',alpha(mgs,il)
+!          ENDIF
+        ENDIF
+        vtxbar(mgs,il,1) = Min(vtmax,vtxbar(mgs,il,1) )
+        vtxbar(mgs,il,2) = Min(vtmax,vtxbar(mgs,il,2) )
+        vtxbar(mgs,il,3) = Min(vtmax,vtxbar(mgs,il,3) )
+        
+!        call commasmpi_abort()
+       ENDIF
+
+
+       xvt(igs(mgs),kgs(mgs),1,il) = vtxbar(mgs,il,1)
+       xvt(igs(mgs),kgs(mgs),2,il) = vtxbar(mgs,il,2)
+       IF ( infdo .ge. 2 ) THEN
+       xvt(igs(mgs),kgs(mgs),3,il) = vtxbar(mgs,il,3)
+       ELSE
+       xvt(igs(mgs),kgs(mgs),3,il) = 0.0
+       ENDIF
+
+!       xvt(igs(mgs),kgs(mgs),2,il) = xvt(igs(mgs),kgs(mgs),1,il)
+
+      enddo
+      ENDDO
+
+      if (ndebugzf .gt. 0 ) write(0,*)  'ZIEGFALL: COPIED FALL SPEEDS'
+
+
+ 9998 continue
+
+      if (ndebugzf .gt. 0 ) write(0,*)  'ZIEGFALL: DONE WITH LOOP'
+
+      if ( kz .gt. nz-1 .and. ix .gt. nx-1 ) then
+        go to 1200
+      else
+        nzmpb = kz 
+      end if
+
+      if (ndebugzf .gt. 0 ) write(0,*) 'ZIEGFALL: SET NZMPB'
+
+      if ( ix+1 .gt. nx ) then
+       nxmpb = 1
+       nzmpb = kz + 1
+     else
+       nxmpb = ix+1
+      end if
+
+      end do !! inumgs
+
+      if (ndebugzf .gt. 0 ) write(0,*) 'ZIEGFALL: SET NXMPB'
+
+ 1200 continue
+
+
+!       ENDDO ! ix
+!      ENDDO ! kz
+
+
+      if (ndebugzf .gt. 0 ) write(0,*) "ZIEGFALL: EXITING SUBROUTINE"
+
+
+      RETURN
+      END subroutine ziegfall
+
+! endif for 1
+
 
 ! #####################################################################
 ! #####################################################################
 
 ! ##############################################################################
       subroutine radardd02(nx,ny,nz,nor,na,an,temk,         &
-     &    dbz,db,nzdbz,cnoh0t,hwdn1t,ipconc, iunit)
+     &    dbz,db,nzdbz,cnoh0t,hwdn1t,ipconc,ke_diag, iunit, vzflag0, vzf)
 !
 ! 11.13.2005: Changed values of indices for reordering of lip
 !
@@ -6323,6 +6933,7 @@ END SUBROUTINE nssl_2mom_driver
       parameter( ng1 = 1 )
       
       real cnoh0t,hwdn1t
+      integer ke_diag
       integer ipconc
       real vr
 
@@ -6330,12 +6941,14 @@ END SUBROUTINE nssl_2mom_driver
       integer imapz,mzdist
       
       integer vzflag
+      integer, intent(in) :: vzflag0
       integer, parameter :: norz = 3
       real an(-nor+ng1:nx+nor,-nor+ng1:ny+nor,-nor+ng1:nz+nor,na)
       real db(-nor+ng1:nx+nor,-nor+ng1:ny+nor,-nor+ng1:nz+nor)  ! air density
 !      real gt(-nor+ng1:nx+nor,-nor+ng1:ny+nor,-nor+ng1:nz+nor,ngt)
       real temk(-nor+ng1:nx+nor,-nor+ng1:ny+nor,-nor+ng1:nz+nor)  ! air temperature (kelvin)
       real dbz(-nor+ng1:nx+nor,-nor+ng1:ny+nor,-nor+ng1:nz+nor)   ! reflectivity
+      real, intent(out) :: vzf(-nor+ng1:nx+nor,-nor+ng1:ny+nor,-nor+ng1:nz+nor)   ! power-weighted fall velocity
       real gz(-nor+1:nz+nor) ! ,z1d(-nor+1:nz+nor,4)
       
 !      real g,rgas,eta,inveta
@@ -6396,6 +7009,7 @@ END SUBROUTINE nssl_2mom_driver
       real qxw,qxw1    ! temp value for liquid water on ice mixing ratio
       real :: dnsnow
       real qh
+      real, allocatable ::  xvt(:,:,:,:) ! xvt(nx,nz,3,lc:lhab) ! 1=mass-weighted, 2=number-weighted, 3=Z-weighted
 
       real, parameter :: cwmasn = 5.23e-13   ! minimum mass, defined by radius of 5.0e-6
       real, parameter :: cwmasx = 5.25e-10   ! maximum mass, defined by radius of 50.0e-6
@@ -6412,6 +7026,12 @@ END SUBROUTINE nssl_2mom_driver
 
       vzflag = 0
       
+      IF ( vzflag0 >= 1 ) THEN
+        vzflag = vzflag0
+        allocate( xvt(nx,nz+1,3,lc:lhab) )
+        xvt(:,:,:,:) = 0.0
+        vzf(:,:,:) = 0.0
+      ENDIF
       izieg = 0
       ice10 = 0
 !      g=9.806                 ! g: gravity constant
@@ -6685,7 +7305,23 @@ END SUBROUTINE nssl_2mom_driver
 
       DO jy=1,1
 
-        DO kz = 1,nz
+        IF ( vzflag == 1 ) THEN
+        cwnccn(:) = 1.e9
+
+! a number of arguments are dummy or reasonable values for single-moment droplets/cloud ice, 
+! which we do not care about since they are not included for reflectivity.
+
+      dtp = 1.
+      
+      call ziegfall(nx,ny,nz,nor,norz,na,dtp,jy, & 
+     &  xvt, & 
+     &  an,db,ipconc,temk,db,cwccn,cwmasn,cwmasx,cimn,cimx, &  ! substituted db for t7, which does not matter, anyway
+     &  cwradn, & 
+     &  qxmin,xdnmx,xdnmn,cdx,cno,xdn0,ccwmx,xvmn,xvmx, & 
+     &  1,1,2)
+
+        ENDIF
+        DO kz = 1,ke_diag ! nz
          
           DO ix=1,nx
             dbz(ix,jy,kz) = 0.0
@@ -6722,6 +7358,9 @@ END SUBROUTINE nssl_2mom_driver
                ENDIF
              ENDIF
              dtmpr = dtmp(ix,kz)
+             IF ( vzflag >= 1 ) THEN
+               vzrain = xvt(ix,kz,3,lr)*dtmp(ix,kz)
+             ENDIF
            ENDIF
            
 !-----------------------------------------------------------------------
@@ -6893,12 +7532,24 @@ END SUBROUTINE nssl_2mom_driver
              
              ksq = 0.189 ! Smith (1984, JAMC) for equiv. ice sphere
              IF ( an(ix,jy,kz,lns) .gt. 1.e-7 ) THEN
-               IF ( .true. ) THEN
-!               IF ( qxw > qsmin ) THEN ! old version
+     !          IF ( .true. ) THEN
+               IF ( qxw > qsmin ) THEN ! old version
 !                gtmp(ix,kz) = 3.6e18*(snu+2.)*( 0.224*an(ix,jy,kz,ls) + 0.776*qxw)*an(ix,jy,kz,ls)/ &
 !     &              (an(ix,jy,kz,lns)*(snu+1.)*rwdn**2)*db(ix,jy,kz)**2
                 gtmp(ix,kz) = 3.6e18*(snu+2.)*( 0.224*(an(ix,jy,kz,ls)+qxw1) + 0.776*qxw)*(an(ix,jy,kz,ls)+qxw1)/ &
      &              (an(ix,jy,kz,lns)*(snu+1.)*rwdn**2)*db(ix,jy,kz)**2
+
+               ELSE ! new form using a mass relationship m = p d^2 (instead of d^3 -- Cox 1988 QJRMS) so that density depends on size
+                    ! p = 0.106214 for m = p v^(2/3)
+                 dnsnow = 0.346159*sqrt(an(ix,jy,kz,lns)/(an(ix,jy,kz,ls)*db(ix,jy,kz)) )
+                 IF ( .true. .or. dnsnow < 900. ) THEN
+                  gtmp(ix,kz) = 1.e18*323.3226* 0.106214**2*(ksq*an(ix,jy,kz,ls) + &
+     &             (1.-ksq)*qxw)*an(ix,jy,kz,ls)*db(ix,jy,kz)**2*gsnow73/         &
+     &                   (an(ix,jy,kz,lns)*(917.)**2* gsnow1*(1.0+snu)**(4./3.))
+                 ELSE ! otherwise small enough to assume ice spheres?
+                  gtmp(ix,kz) = (36./pi**2) * 1.e18*(snu+2.)*( 0.224*(an(ix,jy,kz,ls)+qxw1) + 0.776*qxw)*(an(ix,jy,kz,ls)+qxw1)/ &
+     &              (an(ix,jy,kz,lns)*(snu+1.)*rwdn**2)*db(ix,jy,kz)**2
+                 ENDIF
 
                ENDIF
              
@@ -6923,6 +7574,9 @@ END SUBROUTINE nssl_2mom_driver
              ENDIF !}
             ENDIF !}
            
+            IF ( vzflag >= 1 ) THEN
+               vzsnow = xvt(ix,kz,3,ls)*dtmps
+             ENDIF
            ENDIF !}
            
            ENDIF
@@ -6933,13 +7587,27 @@ END SUBROUTINE nssl_2mom_driver
 !
          IF ( li .gt. 1 .and. idbzci .ne. 0 ) THEN
           
-          gtmp(ix,kz) = 0.0 
+           IF ( idbzci == 1 .and. lni > 0 ) THEN
+          ! assume spherical ice with density of 900 for dbz calc
+            IF ( an(ix,jy,kz,li) > qxmin(li) .and. an(ix,jy,kz,lni) > 1.0 ) THEN
+                 vr = db(ix,jy,kz)*an(ix,jy,kz,li)/(900.*an(ix,jy,kz,lni))
+                 dtmp(ix,kz) = dtmp(ix,kz) +  &
+     &                 0.224*3.6e18*(cinu+2.)*an(ix,jy,kz,lni)*vr**2/(cinu+1.)*(900./1000.)**2
+            ENDIF
+
+          ELSEIF ( idbzci == 2 ) THEN
+!
+! ice crystal contribution (Heymsfield, 1977, JAS)
+!
+         gtmp(ix,kz) = 0.0 
            IF ( an(ix,jy,kz,li) .ge. 0.1e-3 ) THEN
              gtmp(ix,kz) = Min(1.0,1.e3*(an(ix,jy,kz,li))*db(ix,jy,kz))
              dtmp(ix,kz) = dtmp(ix,kz) + 750.0*(gtmp(ix,kz))**1.98
            ENDIF
            
           ENDIF
+        
+        ENDIF
           
 !           
 ! graupel/hail contribution
@@ -6953,7 +7621,7 @@ END SUBROUTINE nssl_2mom_driver
 
            ltest = .false.
            
-           IF ( ltest .or. (an(ix,jy,kz,lh) .ge. qhmin .and. an(ix,jy,kz,lnh) .gt. 1.e-6 )) THEN
+           IF ( ltest .or. (an(ix,jy,kz,lh) .ge. qhmin .and. an(ix,jy,kz,lnh) .ge. cxmin )) THEN
             
             IF ( lvh .gt. 1 ) THEN
              
@@ -7040,6 +7708,9 @@ END SUBROUTINE nssl_2mom_driver
           
           ENDIF
  
+             IF ( vzflag >= 1 ) THEN
+               vzgraupel = xvt(ix,kz,3,lh)*dtmph
+             ENDIF
 
           ENDIF ! }
           
@@ -7138,6 +7809,13 @@ END SUBROUTINE nssl_2mom_driver
           
          ENDIF ! ipconc .ge. 5
 
+            IF ( vzflag >= 1 ) THEN
+               IF ( dtmphl > 10.0**(0.1*20.) .and. an(ix,jy,kz,lhl) > 1.e-6) THEN 
+                 vzhail = xvt(ix,kz,3,lhl)*dtmphl
+               ELSE
+                 vzhail = 2.6 * Max(0.0,dtmphl)**0.107 * (1.2/db(ix,jy,kz))**0.4 
+               ENDIF
+             ENDIF
 
         ENDIF ! izieg .ge. 1 .and. lhl .gt. 1 
 
@@ -7145,6 +7823,9 @@ END SUBROUTINE nssl_2mom_driver
            
           IF ( dtmp(ix,kz) .gt. 0.0 ) THEN
             dbz(ix,jy,kz) = Max(dbzmin, 10.0*Log10(dtmp(ix,kz)) )
+            IF ( vzflag >= 1 .and. dbz(ix,jy,kz) > dbzmin ) THEN
+              vzf(ix,jy,kz) = (vzsnow + vzrain + vzgraupel + vzhail)/dtmp(ix,kz)
+            ENDIF
             
             IF ( dbz(ix,jy,kz) .gt. dbzmax ) THEN
               dbzmax = Max(dbzmax,dbz(ix,jy,kz))
@@ -7229,6 +7910,7 @@ END SUBROUTINE nssl_2mom_driver
       
       ENDIF
       
+      IF ( allocated( xvt ) ) deallocate( xvt )
       
       RETURN
       END subroutine radardd02

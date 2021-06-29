@@ -97,6 +97,7 @@ SUBROUTINE microphysics_driver(                                          &
 #endif
                       ,qnwfa2d, qnifa2d                                  & ! for water/ice-friendly aerosols
                       ,refl_10cm                                         & ! HM, 9/22/09, add for refl
+                      ,vt_dbz_wt                                         & ! HM, 9/22/09, add for refl
                       ,vmi3d                                             & ! for P3 
                       ,di3d                                              & ! for P3 
                       ,rhopo3d                                           & ! for P3 
@@ -561,7 +562,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 !
 ! Optional
 !
-   REAL, OPTIONAL, DIMENSION( ims:ime , kms:kme, jms:jme ) , INTENT(OUT) :: refl_10cm
+   REAL, OPTIONAL, DIMENSION( ims:ime , kms:kme, jms:jme ) , INTENT(OUT) :: refl_10cm, vt_dbz_wt
    REAL, OPTIONAL, DIMENSION( ims:ime , kms:kme, jms:jme ) , INTENT(OUT) :: vmi3d,di3d,rhopo3d,    & ! for P3
                                                                          vmi3d_2,di3d_2,rhopo3d_2,  & ! for P3
                                                                          phii3d,         & ! for Jensen ISHMAEL
@@ -1869,6 +1870,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      GRPLNCV  = GRAUPELNCV,              &
                      SR=SR,                              &
                      dbz      = refl_10cm,               &
+                     vzf      = vt_dbz_wt,               &
 #if ( WRF_CHEM == 1 )
                     EVAPPROD=evapprod,RAINPROD=rainprod, &
 #endif
@@ -1951,6 +1953,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      GRPLNCV  = GRAUPELNCV,              &
                      SR=SR,                              &
                      dbz      = refl_10cm,               &
+                     vzf      = vt_dbz_wt,               &
 #if ( WRF_CHEM == 1 )
                      EVAPPROD=evapprod,RAINPROD=rainprod,&
 #endif
