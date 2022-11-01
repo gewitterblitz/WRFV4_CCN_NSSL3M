@@ -990,7 +990,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
          IF ( w(i,k,j) > 0.5 ) THEN
            n = Min( 500, Nint( w(i,k,j)*10 ) )
            wcount(n,k) = wcount(n,k) + 1
-         ELSEIF ( w(i,k,j) < -0.5 ) THEN
+         ENDIF
+         IF ( w(i,k,j) < -0.5 ) THEN
            n = Min( 500, Nint( -w(i,k,j)*10 ) )
            wcountdd(n,k) = wcountdd(n,k) + 1
          ENDIF
@@ -1069,7 +1070,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
       ENDDO
 !      ENDIF
 
-      write(6,*) 'k,altitude(km),w50,w90,w99,w90 (w<-2), w99 (w<-2),wmin,numsample,numsample2'
+      write(6,*) 'k_dd,altitude(km),w50,w90,w99,w90 (w<-2), w99 (w<-2),wmin,numsample,numsample2'
       DO k = kme-1,1,-1
         tot = 0.0
         tot2ms = 0.0
