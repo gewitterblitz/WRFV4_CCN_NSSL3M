@@ -915,6 +915,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
       real :: thproctmp(kms:kme,nproc),thproctot(kms:kme,nproc)
       
       real, allocatable, save :: wcount(:,:), wcountout(:,:), wcounttot(:,:), wmaxk(:), wmaxk1(:),altitude(:)
+      real, allocatable, save :: wcountdd(:,:), wcountddout(:,:), wcountddtot(:,:), wmink(:), wmink1(:),altitudedd(:)
      
       real tmpg, tmph, tmppwf, tmps, tmpi, tot, tottmp, tot2ms, tottmp2ms
       integer i1,i50,i90,i99,i90a,i99a
@@ -958,10 +959,21 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 #if ( defined(DM_PARALLEL)  &&   ! defined(STUBMPI) )
        allocate( wcountout(500,kme) )
 #endif
+       allocate( wcountdd(500,kme) )
+       allocate( wcountddtot(500,kme) )
+       allocate( wmink(kme), wmink1(kme) )
+       allocate( altitudedd(kme) )
+#if ( defined(DM_PARALLEL)  &&   ! defined(STUBMPI) )
+       allocate( wcountddout(500,kme) )
+#endif
        wcount(:,:) = 0.0
        wcounttot(:,:) = 0.0
        wmaxk(:) = 0.0
        wmaxk1(:) = 0.0
+       wcountdd(:,:) = 0.0
+       wcountddtot(:,:) = 0.0
+       wmink(:) = 0.0
+       wmink1(:) = 0.0
          its = max(ips,ids)
          jts = max(jps,jds)
        altitude(1) = 0 ! dz8w(its,1,jts)*0.001
@@ -971,14 +983,19 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
      ENDIF
       
        wcount(:,:) = 0.0
+       wcountdd(:,:) = 0.0
       DO j = jps,jpe
       DO k = 1,kme-1
        DO i = ips,ipe
          IF ( w(i,k,j) > 0.5 ) THEN
            n = Min( 500, Nint( w(i,k,j)*10 ) )
            wcount(n,k) = wcount(n,k) + 1
+         ELSEIF ( w(i,k,j) < -0.5 ) THEN
+           n = Min( 500, Nint( -w(i,k,j)*10 ) )
+           wcountdd(n,k) = wcountdd(n,k) + 1
          ENDIF
          wmaxk(k) = Max( wmaxk(k), w(i,k,j) )
+         wmink(k) = Min( wmink(k), w(i,k,j) )
        ENDDO
       ENDDO
       ENDDO
@@ -986,14 +1003,19 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 #if ( defined(DM_PARALLEL)  &&   ! defined(STUBMPI) )
       n = 500*kme
       CALL MPI_Reduce(wcount, wcountout, n, MPI_REAL, MPI_SUM, 0, local_communicator, mpi_error_code)
+      CALL MPI_Reduce(wcountdd, wcountddout, n, MPI_REAL, MPI_SUM, 0, local_communicator, mpi_error_code)
       n = kme
       CALL MPI_Reduce(wmaxk, wmaxk1, n, MPI_REAL, MPI_MAX, 0, local_communicator, mpi_error_code)
+      CALL MPI_Reduce(wmink, wmink1, n, MPI_REAL, MPI_MIN, 0, local_communicator, mpi_error_code)
       IF ( wrf_dm_on_monitor() ) THEN
         wcount(:,:) = wcountout(:,:)
         wmaxk(:) = wmaxk1(:)
+        wcountdd(:,:) = wcountddout(:,:)
+        wmink(:) = wmink1(:)
       ENDIF
 #endif
       wcounttot(:,:) = wcounttot(:,:) + wcount(:,:)
+      wcountddtot(:,:) = wcountddtot(:,:) + wcountdd(:,:)
       
       IF ( wrf_dm_on_monitor() .and. diagflag ) THEN
       write(6,*) 'k,altitude(km),w50,w90,w99,w90 (w>2), w99 (w>2),wmax,numsample,numsample2'
@@ -1042,6 +1064,57 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 !        write(6,*) k,0.1*i50,0.1*i90,0.1*i99,wmaxk(k),tot,tottmp
         write(6,'(1x,i3,1x,f7.3,6(1x,f7.2),2(2x,1pe13.5))') &
            k,altitude(k),0.1*i50,0.1*i90,0.1*i99, 0.1*i90a, 0.1*i99a, wmaxk(k),tot,tot2ms
+        
+        
+      ENDDO
+!      ENDIF
+
+      write(6,*) 'k,altitude(km),w50,w90,w99,w90 (w<-2), w99 (w<-2),wmin,numsample,numsample2'
+      DO k = kme-1,1,-1
+        tot = 0.0
+        tot2ms = 0.0
+        tottmp = 0.0
+        tottmp2ms = 0.0
+        DO i = 10,500
+          tot = tot + wcountddtot(i,k)
+          IF ( i > 20 ) tot2ms = tot2ms + wcountddtot(i,k) ! total greater than 2m/s
+        ENDDO
+
+         i50 = 0
+         i90 = 0
+         i99 = 0
+         i90a = 0
+         i99a = 0
+
+        IF ( tot > 0.0 ) THEN
+          DO i = 10,500
+            tottmp = tottmp + wcountddtot(i,k)
+            IF ( tottmp <= 0.50*tot ) THEN
+              i50 = i
+            ENDIF
+            IF ( tottmp <= 0.90*tot ) THEN
+              i90 = i
+            ENDIF
+            IF ( tottmp <= 0.99*tot ) THEN
+              i99 = i
+            ENDIF
+            
+            IF ( i > 20 .and. tot2ms > 1.0 ) THEN
+              tottmp2ms = tottmp2ms + wcountddtot(i,k)
+              IF ( tottmp2ms <= 0.90*tot2ms ) THEN
+                i90a = i
+              ENDIF
+              IF ( tottmp2ms <= 0.99*tot2ms ) THEN
+                i99a = i
+              ENDIF
+            ENDIF
+
+          ENDDO
+        ENDIF
+       
+!        write(6,*) k,0.1*i50,0.1*i90,0.1*i99,wmaxk(k),tot,tottmp
+        write(6,'(1x,i3,1x,f8.3,6(1x,f8.2),2(2x,1pe13.5))') &
+           k,altitude(k),-0.1*i50,-0.1*i90,-0.1*i99, -0.1*i90a, -0.1*i99a, wmink(k),tot,tot2ms
         
         
       ENDDO
