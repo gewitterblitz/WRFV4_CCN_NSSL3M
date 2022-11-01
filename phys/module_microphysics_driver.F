@@ -117,6 +117,7 @@ SUBROUTINE microphysics_driver(                                          &
                       ,gridlight                                         &
                       ,noninduc,  rscghis_2d                             &
 #endif
+                      ,THPROC, f_THPROC, nproc  &
                       ,rainnc,    rainncv                                &
                       ,snownc,    snowncv                                &
                       ,hailnc,    hailncv                                &
@@ -878,7 +879,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
    real, allocatable        ::  temg(:,:,:)
    integer, allocatable, save  ::  kcldtop(:,:)
    real :: tmp
-   double precision :: etot
+   double precision :: etot, hgt2
    double precision :: dt1,dt4,timeboxmg
    real, parameter :: jc = -2.0e-12  ! fair weather current density J (Amp m**-2) (Helsdon & Farley 1987; Chiu (1978) has -2.7e-12, quoting Gish (1944))
    real, parameter :: eperao = 8.8592e-12 ! permittivity of air
@@ -900,7 +901,23 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
    integer :: ng =3
    integer :: ngx1,ngx2,ngy1,ngy2
 ! End explicit lightning
+
 #endif
+
+
+! #define NUMPROCT 39
+      integer, intent(in) :: nproc
+      real, optional, intent(inout) ::THPROC(kms:kme,nproc)
+      logical, optional, intent(in) :: f_THPROC
+!      integer, parameter :: numproc = NUMPROCT
+!      integer, parameter :: ntq1    = 4
+      real :: proctot(nproc),proctotmpi(nproc)
+      real :: thproctmp(kms:kme,nproc),thproctot(kms:kme,nproc)
+      
+      real, allocatable, save :: wcount(:,:), wcountout(:,:), wcounttot(:,:), wmaxk(:), wmaxk1(:),altitude(:)
+     
+      real tmpg, tmph, tmppwf, tmps, tmpi, tot, tottmp, tot2ms, tottmp2ms
+      integer i1,i50,i90,i99,i90a,i99a
 
 
 !---------------------------------------------------------------------
@@ -930,6 +947,107 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
       WRITE( wrf_err_message , * ) 'microphysics_driver: GLOBAL w max/min = ', wmax, wmin
       CALL wrf_message ( wrf_err_message )
       ENDIF
+
+
+     IF ( .not. allocated( wcount ) ) THEN
+       write(0,*) 'allocate wcount'
+       allocate( wcount(500,kme) )
+       allocate( wcounttot(500,kme) )
+       allocate( wmaxk(kme), wmaxk1(kme) )
+       allocate( altitude(kme) )
+#if ( defined(DM_PARALLEL)  &&   ! defined(STUBMPI) )
+       allocate( wcountout(500,kme) )
+#endif
+       wcount(:,:) = 0.0
+       wcounttot(:,:) = 0.0
+       wmaxk(:) = 0.0
+       wmaxk1(:) = 0.0
+         its = max(ips,ids)
+         jts = max(jps,jds)
+       altitude(1) = 0 ! dz8w(its,1,jts)*0.001
+       DO k = 2,kme-1
+         altitude(k) = altitude(k-1) + dz8w(its,k,jts)*0.001
+       ENDDO
+     ENDIF
+      
+       wcount(:,:) = 0.0
+      DO j = jps,jpe
+      DO k = 1,kme-1
+       DO i = ips,ipe
+         IF ( w(i,k,j) > 0.5 ) THEN
+           n = Min( 500, Nint( w(i,k,j)*10 ) )
+           wcount(n,k) = wcount(n,k) + 1
+         ENDIF
+         wmaxk(k) = Max( wmaxk(k), w(i,k,j) )
+       ENDDO
+      ENDDO
+      ENDDO
+
+#if ( defined(DM_PARALLEL)  &&   ! defined(STUBMPI) )
+      n = 500*kme
+      CALL MPI_Reduce(wcount, wcountout, n, MPI_REAL, MPI_SUM, 0, local_communicator, mpi_error_code)
+      n = kme
+      CALL MPI_Reduce(wmaxk, wmaxk1, n, MPI_REAL, MPI_MAX, 0, local_communicator, mpi_error_code)
+      IF ( wrf_dm_on_monitor() ) THEN
+        wcount(:,:) = wcountout(:,:)
+        wmaxk(:) = wmaxk1(:)
+      ENDIF
+#endif
+      wcounttot(:,:) = wcounttot(:,:) + wcount(:,:)
+      
+      IF ( wrf_dm_on_monitor() .and. diagflag ) THEN
+      write(6,*) 'k,altitude(km),w50,w90,w99,w90 (w>2), w99 (w>2),wmax,numsample,numsample2'
+      DO k = kme-1,1,-1
+        tot = 0.0
+        tot2ms = 0.0
+        tottmp = 0.0
+        tottmp2ms = 0.0
+        DO i = 10,500
+          tot = tot + wcounttot(i,k)
+          IF ( i > 20 ) tot2ms = tot2ms + wcounttot(i,k) ! total greater than 2m/s
+        ENDDO
+
+         i50 = 0
+         i90 = 0
+         i99 = 0
+         i90a = 0
+         i99a = 0
+
+        IF ( tot > 0.0 ) THEN
+          DO i = 10,500
+            tottmp = tottmp + wcounttot(i,k)
+            IF ( tottmp <= 0.50*tot ) THEN
+              i50 = i
+            ENDIF
+            IF ( tottmp <= 0.90*tot ) THEN
+              i90 = i
+            ENDIF
+            IF ( tottmp <= 0.99*tot ) THEN
+              i99 = i
+            ENDIF
+            
+            IF ( i > 20 .and. tot2ms > 1.0 ) THEN
+              tottmp2ms = tottmp2ms + wcounttot(i,k)
+              IF ( tottmp2ms <= 0.90*tot2ms ) THEN
+                i90a = i
+              ENDIF
+              IF ( tottmp2ms <= 0.99*tot2ms ) THEN
+                i99a = i
+              ENDIF
+            ENDIF
+
+          ENDDO
+        ENDIF
+       
+!        write(6,*) k,0.1*i50,0.1*i90,0.1*i99,wmaxk(k),tot,tottmp
+        write(6,'(1x,i3,1x,f7.3,6(1x,f7.2),2(2x,1pe13.5))') &
+           k,altitude(k),0.1*i50,0.1*i90,0.1*i99, 0.1*i90a, 0.1*i99a, wmaxk(k),tot,tot2ms
+        
+        
+      ENDDO
+      ENDIF
+
+
    ENDIF
 
 #ifdef XEON_OPTIMIZED_WSM5
@@ -980,7 +1098,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 #endif
 
    !$OMP PARALLEL DO   &
-   !$OMP PRIVATE ( ij, its, ite, jts, jte, i,j,k,n )
+   !$OMP PRIVATE ( ij, its, ite, jts, jte, i,j,k,n ,thproctmp)
 
    DO ij = 1 , num_tiles
        IF (channel) THEN
@@ -992,6 +1110,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
        ENDIF
        jts = max(j_start(ij),jds+sz)
        jte = min(j_end(ij),jde-1-sz)
+
+       thproctmp(:,:) = 0.0
 
 # if( EM_CORE==1 )
        sf_surf_irr: SELECT CASE(sf_surf_irr_scheme)
@@ -1964,6 +2084,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      dbz      = refl_10cm,               &
                      diagflag = diagflag,                &
                      ke_diag = ke_diag,                &
+                     thproc = thproctmp, f_thproc=f_thproc,   &
+                     nproc = nproc,                &
                   IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
                   IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
                   ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte  &
@@ -2014,6 +2136,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      dbz      = refl_10cm,               &
                      diagflag = diagflag,                &
                      ke_diag = ke_diag,                &
+                     thproc = thproctmp, f_thproc=f_thproc,   &
+                     nproc = nproc,                &
                   IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
                   IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
                   ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte  &
@@ -2096,6 +2220,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      has_reqc=has_reqc,                  & ! ala G. Thompson
                      has_reqi=has_reqi,                  & ! ala G. Thompson
                      has_reqs=has_reqs,                  & ! ala G. Thompson
+                     thproc = thproctmp, f_thproc=f_thproc,   &
+                     nproc = nproc,                &
                   IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
                   IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
                   ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte  &
@@ -2174,6 +2300,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      EVAPPROD=evapprod,RAINPROD=rainprod,&
                      WETSCAV_ON = config_flags%wetscav_onoff == 1, &
 #endif
+                     thproc = thproctmp, f_thproc=f_thproc,   &
+                     nproc = nproc,                &
                   IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
                   IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
                   ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte  &
@@ -2260,6 +2388,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      has_reqc=has_reqc,                  & ! ala G. Thompson
                      has_reqi=has_reqi,                  & ! ala G. Thompson
                      has_reqs=has_reqs,                  & ! ala G. Thompson
+                     thproc = thproctmp, f_thproc=f_thproc,   &
+                     nproc = nproc,                &
                   IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
                   IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
                   ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte  &
@@ -2332,6 +2462,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      EVAPPROD=evapprod,RAINPROD=rainprod,&
                      WETSCAV_ON = config_flags%wetscav_onoff == 1, &
 #endif
+                     thproc = thproctmp, f_thproc=f_thproc,   &
+                     nproc = nproc,                &
                   IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
                   IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
                   ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte  &
@@ -2428,6 +2560,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      has_reqc=has_reqc,                  & ! ala G. Thompson
                      has_reqi=has_reqi,                  & ! ala G. Thompson
                      has_reqs=has_reqs,                  & ! ala G. Thompson
+                     thproc = thproctmp, f_thproc=f_thproc,   &
+                     nproc = nproc,                &
                   IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
                   IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
                   ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte  &
@@ -2505,6 +2639,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      EVAPPROD=evapprod,RAINPROD=rainprod,&
                      WETSCAV_ON = config_flags%wetscav_onoff == 1, &
 #endif
+                     thproc = thproctmp, f_thproc=f_thproc,   &
+                     nproc = nproc,                &
                   IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
                   IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
                   ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte  &
@@ -3262,6 +3398,15 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 
       END SELECT micro_select
 
+      IF ( f_thproc ) THEN
+!$OMP CRITICAL      
+        DO n = 1,nproc
+         DO k = kms,kme
+           thproc(k,n) = thproc(k,n) + thproctmp(k,n)
+         ENDDO
+        ENDDO
+!$OMP END CRITICAL      
+      ENDIF
       
 #if ( WRF_ELEC == 1 )
 #include "../elec/include_microphysics_driver_elec.F"

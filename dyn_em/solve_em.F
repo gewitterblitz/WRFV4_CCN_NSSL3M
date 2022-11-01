@@ -3882,6 +3882,7 @@ BENCH_START(micro_driver_tim)
       &        , nssl_zgrnd=config_flags%nssl_zgrnd                       &
 #endif
 !--------------END EXPLICIT LIGHTNING -------------------------------------
+      &        , THPROC=grid%THPROC, nproc=size(grid%thproc,2), f_thproc=(size(grid%thproc,1) > 1 )  &
       &        , HAIL=config_flags%gsfcgce_hail                           & ! for gsfcgce
       &        , ICE2=config_flags%gsfcgce_2ice                           & ! for gsfcgce
       &        , PHYS_TOT=grid%phys_tot                                   & ! for gsfcgce

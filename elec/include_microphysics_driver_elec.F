@@ -34,12 +34,64 @@
       
      endif
 
+      IF ( f_thproc ) THEN
+!$OMP CRITICAL      
+        DO n = 1,nproc
+         DO k = kms,kme
+           thproc(k,n) = thproctmp(k,n)
+         ENDDO
+        ENDDO
+!$OMP END CRITICAL      
+      ENDIF
+
+
        IF ( num_tiles > 1 ) THEN
          write(0,*) 'CANNOT RUN WITH num_tiles > 1 !'
          STOP
        ENDIF
 
-  93  format(A,9(I3,2x))
+      IF ( f_thproc ) THEN
+       proctot(:) = 0.0 
+       proctotmpi(:) = 0.0 
+       DO k = kms,kme
+        DO i = 1,nproc
+          proctot(i) = proctot(i) + thproctmp(k,i)
+        ENDDO
+       ENDDO
+
+      CALL MPI_Reduce(proctot, proctotmpi, nproc, MPI_REAL, MPI_SUM, 0, local_communicator, mpi_error_code)
+
+!  6   format('local processes: ',39(1x,1pe12.5))
+!      write(6,6) (proctot(i), i=1,nproc)
+
+      IF ( wrf_dm_on_monitor() ) THEN
+ 11   format('processes: ',39(1x,1pe12.5))
+      write(6,11) (proctotmpi(i), i=1,nproc)
+      ENDIF
+
+  111    format (1x,i3,1x,f6.2,1x,f6.2,39(2x,1pe13.5))
+
+       IF ( diagflag ) THEN
+      
+      k = nproc*kme
+      CALL MPI_Reduce(thproc, thproctot, k, MPI_REAL, MPI_SUM, 0, local_communicator, mpi_error_code)
+
+       IF ( wrf_dm_on_monitor() ) THEN
+        write(6,'(a,i6)') 'Layer microphysics processes, nzend = ',kme
+        write(6,'(a)')   &
+     &      'kz,crfrz,ciacrf,chcnsh,chcnih'
+        DO k=kme,1,-1
+          hgt2=sum( dz8w(1,1:k,1) )
+          write(6,111 ) k,0.001*hgt2,th(1,k,1)*pi_phy(1,k,1),(thproctot(k,i), i=1,nproc)
+        ENDDO
+       ENDIF
+       
+       ENDIF
+
+       ENDIF
+
+
+!  93  format(A,9(I3,2x))
 
 !       nxdg = ime-ims+1
 !       nydg = jme-jms+1
