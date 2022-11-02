@@ -916,7 +916,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
       
       real, allocatable, save :: wcount(:,:), wcountout(:,:), wcounttot(:,:), wmaxk(:), wmaxk1(:),altitude(:)
       real, allocatable, save :: wcountdd(:,:), wcountddout(:,:), wcountddtot(:,:), wmink(:), wmink1(:),altitudedd(:)
-     
+      real, allocatable, save :: udmf(:),ddmf(:),udmf3(:),ddmf3(:),mpitot(:)
       real tmpg, tmph, tmppwf, tmps, tmpi, tot, tottmp, tot2ms, tottmp2ms
       integer i1,i50,i90,i99,i90a,i99a
 
@@ -955,6 +955,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
        allocate( wcount(500,kme) )
        allocate( wcounttot(500,kme) )
        allocate( wmaxk(kme), wmaxk1(kme) )
+       allocate( udmf(kme),ddmf(kme),udmf3(kme),ddmf3(kme),mpitot(kme) )
        allocate( altitude(kme) )
 #if ( defined(DM_PARALLEL)  &&   ! defined(STUBMPI) )
        allocate( wcountout(500,kme) )
@@ -984,16 +985,28 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
       
        wcount(:,:) = 0.0
        wcountdd(:,:) = 0.0
+       udmf(:) = 0.0
+       ddmf(:) = 0.0
+       udmf3(:) = 0.0
+       ddmf3(:) = 0.0
       DO j = jps,jpe
       DO k = 1,kme-1
        DO i = ips,ipe
          IF ( w(i,k,j) > 0.5 ) THEN
            n = Min( 500, Nint( w(i,k,j)*10 ) )
            wcount(n,k) = wcount(n,k) + 1
+           udmf(k) = udmf(k) + w(i,k,j)*rho(i,k,j)
+           IF ( w(i,k,j) > 3.0 ) THEN
+             udmf3(k) = udmf3(k) + w(i,k,j)*rho(i,k,j)
+           ENDIF
          ENDIF
          IF ( w(i,k,j) < -0.5 ) THEN
            n = Min( 500, Nint( -w(i,k,j)*10 ) )
            wcountdd(n,k) = wcountdd(n,k) + 1
+           ddmf(k) = ddmf(k) + w(i,k,j)*rho(i,k,j)
+           IF ( w(i,k,j) <  -3.0 ) THEN
+             ddmf3(k) = ddmf3(k) + w(i,k,j)*rho(i,k,j)
+           ENDIF
          ENDIF
          wmaxk(k) = Max( wmaxk(k), w(i,k,j) )
          wmink(k) = Min( wmink(k), w(i,k,j) )
@@ -1008,18 +1021,36 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
       n = kme
       CALL MPI_Reduce(wmaxk, wmaxk1, n, MPI_REAL, MPI_MAX, 0, local_communicator, mpi_error_code)
       CALL MPI_Reduce(wmink, wmink1, n, MPI_REAL, MPI_MIN, 0, local_communicator, mpi_error_code)
+
       IF ( wrf_dm_on_monitor() ) THEN
         wcount(:,:) = wcountout(:,:)
         wmaxk(:) = wmaxk1(:)
         wcountdd(:,:) = wcountddout(:,:)
         wmink(:) = wmink1(:)
       ENDIF
+
+      CALL MPI_Reduce(udmf, mpitot, n, MPI_REAL, MPI_SUM, 0, local_communicator, mpi_error_code)
+      IF ( wrf_dm_on_monitor() ) THEN
+        udmf(:) = mpitot(:)
+      ENDIF
+      CALL MPI_Reduce(udmf3, mpitot, n, MPI_REAL, MPI_SUM, 0, local_communicator, mpi_error_code)
+      IF ( wrf_dm_on_monitor() ) THEN
+        udmf3(:) = mpitot(:)
+      ENDIF
+      CALL MPI_Reduce(ddmf, mpitot, n, MPI_REAL, MPI_SUM, 0, local_communicator, mpi_error_code)
+      IF ( wrf_dm_on_monitor() ) THEN
+        ddmf(:) = mpitot(:)
+      ENDIF
+      CALL MPI_Reduce(ddmf3, mpitot, n, MPI_REAL, MPI_SUM, 0, local_communicator, mpi_error_code)
+      IF ( wrf_dm_on_monitor() ) THEN
+        ddmf3(:) = mpitot(:)
+      ENDIF
 #endif
       wcounttot(:,:) = wcounttot(:,:) + wcount(:,:)
       wcountddtot(:,:) = wcountddtot(:,:) + wcountdd(:,:)
       
       IF ( wrf_dm_on_monitor() .and. diagflag ) THEN
-      write(6,*) 'k,altitude(km),w50,w90,w99,w90 (w>2), w99 (w>2),wmax,numsample,numsample2'
+      write(6,*) 'k,altitude(km),w50,w90,w99,w90 (w>2), w99 (w>2),wmax,numsample,numsample2,udmf,udmf3'
       DO k = kme-1,1,-1
         tot = 0.0
         tot2ms = 0.0
@@ -1063,14 +1094,14 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
         ENDIF
        
 !        write(6,*) k,0.1*i50,0.1*i90,0.1*i99,wmaxk(k),tot,tottmp
-        write(6,'(1x,i3,1x,f7.3,6(1x,f7.2),2(2x,1pe13.5))') &
-           k,altitude(k),0.1*i50,0.1*i90,0.1*i99, 0.1*i90a, 0.1*i99a, wmaxk(k),tot,tot2ms
+        write(6,'(1x,i3,1x,f7.3,6(1x,f7.2),4(2x,1pe13.5))') &
+           k,altitude(k),0.1*i50,0.1*i90,0.1*i99, 0.1*i90a, 0.1*i99a, wmaxk(k),tot,tot2ms, udmf(k),udmf3(k)
         
         
       ENDDO
 !      ENDIF
 
-      write(6,*) 'k_dd,altitude(km),w50,w90,w99,w90 (w<-2), w99 (w<-2),wmin,numsample,numsample2'
+      write(6,*) 'k_dd,altitude(km),w50,w90,w99,w90 (w<-2), w99 (w<-2),wmin,numsample,numsample2,ddmf,ddmf3'
       DO k = kme-1,1,-1
         tot = 0.0
         tot2ms = 0.0
@@ -1114,8 +1145,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
         ENDIF
        
 !        write(6,*) k,0.1*i50,0.1*i90,0.1*i99,wmaxk(k),tot,tottmp
-        write(6,'(1x,i3,1x,f8.3,6(1x,f8.2),2(2x,1pe13.5))') &
-           k,altitude(k),-0.1*i50,-0.1*i90,-0.1*i99, -0.1*i90a, -0.1*i99a, wmink(k),tot,tot2ms
+        write(6,'(1x,i3,1x,f8.3,6(1x,f8.2),4(2x,1pe13.5))') &
+           k,altitude(k),-0.1*i50,-0.1*i90,-0.1*i99, -0.1*i90a, -0.1*i99a, wmink(k),tot,tot2ms,ddmf(k),ddmf3(k)
         
         
       ENDDO
