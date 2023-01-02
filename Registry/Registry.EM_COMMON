@@ -2120,8 +2120,17 @@ state    real  track_qgraup   {tl}k      misc     1         -      -       "trac
 state    real  track_qvapor   {tl}k      misc     1         -      -       "track_qvapor"       "water vapor mixing ratio"   "kg kg-1"
 
 
-dimspec  numproct  -  constant=44      c     micro_process
-state    real  thproc       k{numproct}     misc        1         -      rh     "THPROC"  "TIME-HEIGHT PROCESS RATES"   "-"
+#dimspec  numproct  -  constant=44      c     micro_process
+dimspec  numproct    1     namelist=nssl_numproc              x     micro_process
+#state    real  refl_10cm       ikj      dyn_em      1         -      hdu      "refl_10cm"             "Radar reflectivity (lamda = 10 cm)"  "dBZ"
+state    real  thproc       k{numproct}   misc      1         -      rh     "THPROC"  "TIME-HEIGHT PROCESS RATES"   "-"
+
+# Start of a 2d array of 1d arrays to replace thproc at some point. 
+# state  real    -     kf   testproc   1   -  -  -
+#
+# state  real  crfz    kf   testproc   1   -  h "crfz"   "drop number freezing rate"   "unitless"
+# rconfig  integer  opt_thproc   namelist,physics  1  0   irh  "opt_thproc"  "enable thproc array"      ""
+# package   timeheight_process  opt_thproc==1    -  testproc:crfz
 
 # MAD-WRF
 state     real    brtemp         ij       dyn_em      1         -    i01h "brtemp"   "Brightness temperature to calc cloud top height" "K"
@@ -2462,6 +2471,7 @@ rconfig   real    swrad_scat              namelist,physics	1             1      
 rconfig   integer surface_input_source    namelist,physics	1             3       irh    "surface_input_source"          "1=static (fractional), 2=time dependent (dominant), 3=dominant cateogry from metgrid"      ""
 rconfig   integer num_soil_layers         namelist,physics	1             5       irh    "num_soil_layers"               ""      ""
 rconfig   integer num_pft_clm             namelist,physics      1            17       -      "num_pft_clm"                  ""      ""
+rconfig   integer nssl_numproc            namelist,physics      1            44       -      "nssl_numproc"                  ""      ""
 rconfig   logical input_pft               namelist,physics      1            .false.   h     "input_pft_flag"         "use input pft instead of USGS"      ""
 rconfig   integer maxpatch                namelist,physics      1            10       irh    "maxpatch"                      ""      ""
 rconfig   integer num_snow_layers         namelist,physics	1             3       irh    "num_snow_layers"               ""      ""

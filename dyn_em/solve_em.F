@@ -3666,7 +3666,7 @@ BENCH_START(micro_driver_tim)
 #      include "HALO_EM_SBM.inc"
 #endif
 
-
+      
      CALL microphysics_driver(                                            &
       &         DT=dtm             ,DX=grid%dx              ,DY=grid%dy   &
       &        ,DZ8W=dz8w          ,F_ICE_PHY=grid%f_ice_phy              &
@@ -3882,7 +3882,8 @@ BENCH_START(micro_driver_tim)
       &        , nssl_zgrnd=config_flags%nssl_zgrnd                       &
 #endif
 !--------------END EXPLICIT LIGHTNING -------------------------------------
-      &        , THPROC=grid%THPROC, nproc=size(grid%thproc,2), f_thproc=(size(grid%thproc,1) > 1 )  &
+      &        , THPROC=grid%THPROC, nproc=config_flags%nssl_numproc      &
+      &        , f_thproc=(config_flags%nssl_numproc > 1 )                &
       &        , HAIL=config_flags%gsfcgce_hail                           & ! for gsfcgce
       &        , ICE2=config_flags%gsfcgce_2ice                           & ! for gsfcgce
       &        , PHYS_TOT=grid%phys_tot                                   & ! for gsfcgce

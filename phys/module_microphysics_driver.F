@@ -907,16 +907,22 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 
 ! #define NUMPROCT 39
       integer, intent(in) :: nproc
-      real, optional, intent(inout) ::THPROC(kms:kme,nproc)
+      real, optional, intent(inout) :: THPROC(kms:kme,nproc)
       logical, optional, intent(in) :: f_THPROC
 !      integer, parameter :: numproc = NUMPROCT
 !      integer, parameter :: ntq1    = 4
+!      logical :: f_THPROC = .false.
+!      integer, parameter :: nproc = 44
+!      real :: THPROC(nproc,kms:kme)
       real :: proctot(nproc),proctotmpi(nproc)
       real :: thproctmp(kms:kme,nproc),thproctot(kms:kme,nproc)
+      logical :: cleardiag = .false.
       
       real, allocatable, save :: wcount(:,:), wcountout(:,:), wcounttot(:,:), wmaxk(:), wmaxk1(:),altitude(:)
       real, allocatable, save :: wcountdd(:,:), wcountddout(:,:), wcountddtot(:,:), wmink(:), wmink1(:),altitudedd(:)
       real, allocatable, save :: udmf(:),ddmf(:),udmf3(:),ddmf3(:),mpitot(:)
+      integer, parameter :: numwcount = 500
+      integer :: iout
       real tmpg, tmph, tmppwf, tmps, tmpi, tot, tottmp, tot2ms, tottmp2ms
       integer i1,i50,i90,i99,i90a,i99a
 
@@ -952,20 +958,20 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 
      IF ( .not. allocated( wcount ) ) THEN
        write(0,*) 'allocate wcount'
-       allocate( wcount(500,kme) )
-       allocate( wcounttot(500,kme) )
+       allocate( wcount(numwcount,kme) )
+       allocate( wcounttot(numwcount,kme) )
        allocate( wmaxk(kme), wmaxk1(kme) )
        allocate( udmf(kme),ddmf(kme),udmf3(kme),ddmf3(kme),mpitot(kme) )
        allocate( altitude(kme) )
 #if ( defined(DM_PARALLEL)  &&   ! defined(STUBMPI) )
-       allocate( wcountout(500,kme) )
+       allocate( wcountout(numwcount,kme) )
 #endif
-       allocate( wcountdd(500,kme) )
-       allocate( wcountddtot(500,kme) )
+       allocate( wcountdd(numwcount,kme) )
+       allocate( wcountddtot(numwcount,kme) )
        allocate( wmink(kme), wmink1(kme) )
        allocate( altitudedd(kme) )
 #if ( defined(DM_PARALLEL)  &&   ! defined(STUBMPI) )
-       allocate( wcountddout(500,kme) )
+       allocate( wcountddout(numwcount,kme) )
 #endif
        wcount(:,:) = 0.0
        wcounttot(:,:) = 0.0
@@ -981,6 +987,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
        DO k = 2,kme-1
          altitude(k) = altitude(k-1) + dz8w(its,k,jts)*0.001
        ENDDO
+       write(0,*) 'done allocate wcount'
      ENDIF
       
        wcount(:,:) = 0.0
@@ -993,7 +1000,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
       DO k = 1,kme-1
        DO i = ips,ipe
          IF ( w(i,k,j) > 0.5 ) THEN
-           n = Min( 500, Nint( w(i,k,j)*10 ) )
+           n = Min( numwcount, Nint( w(i,k,j)*10 ) )
            wcount(n,k) = wcount(n,k) + 1
            udmf(k) = udmf(k) + w(i,k,j)*rho(i,k,j)
            IF ( w(i,k,j) > 3.0 ) THEN
@@ -1001,7 +1008,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
            ENDIF
          ENDIF
          IF ( w(i,k,j) < -0.5 ) THEN
-           n = Min( 500, Nint( -w(i,k,j)*10 ) )
+           n = Min( numwcount, Nint( -w(i,k,j)*10 ) )
            wcountdd(n,k) = wcountdd(n,k) + 1
            ddmf(k) = ddmf(k) + w(i,k,j)*rho(i,k,j)
            IF ( w(i,k,j) <  -3.0 ) THEN
@@ -1015,14 +1022,14 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
       ENDDO
 
 #if ( defined(DM_PARALLEL)  &&   ! defined(STUBMPI) )
-      n = 500*kme
+      n = numwcount*kme
       CALL MPI_Reduce(wcount, wcountout, n, MPI_REAL, MPI_SUM, 0, local_communicator, mpi_error_code)
       CALL MPI_Reduce(wcountdd, wcountddout, n, MPI_REAL, MPI_SUM, 0, local_communicator, mpi_error_code)
       n = kme
       CALL MPI_Reduce(wmaxk, wmaxk1, n, MPI_REAL, MPI_MAX, 0, local_communicator, mpi_error_code)
       CALL MPI_Reduce(wmink, wmink1, n, MPI_REAL, MPI_MIN, 0, local_communicator, mpi_error_code)
 
-      IF ( wrf_dm_on_monitor() ) THEN
+      IF ( wrf_dm_on_monitor() ) THEN ! is ok because wcount is zeroed out above each time step
         wcount(:,:) = wcountout(:,:)
         wmaxk(:) = wmaxk1(:)
         wcountdd(:,:) = wcountddout(:,:)
@@ -1046,8 +1053,11 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
         ddmf3(:) = mpitot(:)
       ENDIF
 #endif
-      wcounttot(:,:) = wcounttot(:,:) + wcount(:,:)
-      wcountddtot(:,:) = wcountddtot(:,:) + wcountdd(:,:)
+
+      IF ( wrf_dm_on_monitor() ) THEN
+        wcounttot(:,:) = wcounttot(:,:) + wcount(:,:)
+        wcountddtot(:,:) = wcountddtot(:,:) + wcountdd(:,:)
+      ENDIF
       
       IF ( wrf_dm_on_monitor() .and. diagflag ) THEN
       write(6,*) 'k,altitude(km),w50,w90,w99,w90 (w>2), w99 (w>2),wmax,numsample,numsample2,udmf,udmf3'
@@ -1056,7 +1066,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
         tot2ms = 0.0
         tottmp = 0.0
         tottmp2ms = 0.0
-        DO i = 10,500
+        DO i = 10,numwcount
           tot = tot + wcounttot(i,k)
           IF ( i > 20 ) tot2ms = tot2ms + wcounttot(i,k) ! total greater than 2m/s
         ENDDO
@@ -1068,7 +1078,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
          i99a = 0
 
         IF ( tot > 0.0 ) THEN
-          DO i = 10,500
+          DO i = 10,numwcount
             tottmp = tottmp + wcounttot(i,k)
             IF ( tottmp <= 0.50*tot ) THEN
               i50 = i
@@ -1107,7 +1117,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
         tot2ms = 0.0
         tottmp = 0.0
         tottmp2ms = 0.0
-        DO i = 10,500
+        DO i = 10,numwcount
           tot = tot + wcountddtot(i,k)
           IF ( i > 20 ) tot2ms = tot2ms + wcountddtot(i,k) ! total greater than 2m/s
         ENDDO
@@ -1119,7 +1129,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
          i99a = 0
 
         IF ( tot > 0.0 ) THEN
-          DO i = 10,500
+          DO i = 10,numwcount
             tottmp = tottmp + wcountddtot(i,k)
             IF ( tottmp <= 0.50*tot ) THEN
               i50 = i
@@ -1150,7 +1160,18 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
         
         
       ENDDO
-      ENDIF
+      
+      ! write out binary data (overwrite existing file since only the last one is needed
+      ! write kme, wcount, wcountdd, wcounttot, wcountddtot,altitude,wmaxk(k),udmf(k),udmf3(k),wmink,ddmf(k),ddmf3(k)
+      iout = 15
+      open(unit=iout,status='unknown',file='wrfrce_wcount.bin',form='unformatted')
+      write(iout) kme,numwcount
+      write(iout) altitude,wmaxk,udmf,udmf3,wmink,ddmf,ddmf3
+      write(iout) wcount,wcountdd
+      write(iout) wcounttot,wcountddtot
+      close(iout)
+      
+      ENDIF ! wrfdmonmonitor & diagflag
 
 
    ENDIF
@@ -3505,13 +3526,21 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 
       IF ( f_thproc ) THEN
 !$OMP CRITICAL      
+        IF ( cleardiag .or. itimestep == 1 ) THEN
+          thproc(:,:) = 0.0
+          cleardiag = .false.
+        ENDIF
         DO n = 1,nproc
          DO k = kms,kme
            thproc(k,n) = thproc(k,n) + thproctmp(k,n)
          ENDDO
         ENDDO
+        
+        IF ( diagflag ) cleardiag = .true. ! set for following time step
+        
 !$OMP END CRITICAL      
       ENDIF
+      
       
 #if ( WRF_ELEC == 1 )
 #include "../elec/include_microphysics_driver_elec.F"
