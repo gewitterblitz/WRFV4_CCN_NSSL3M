@@ -327,8 +327,8 @@ CONTAINS
    nyc = jde/2
    icm = ide/2
 ! lm is the half width of the land in terms of grid points
-   IF ( lm == 0 ) lm = 25
-   write(6,*) 'lm,icm-lm,icm+lm = ', lm,icm-lm,icm+lm
+!   IF ( lm == 0 ) lm = 25
+!   write(6,*) 'lm,icm-lm,icm+lm = ', lm,icm-lm,icm+lm
 
   CASE (b_wave)
 
