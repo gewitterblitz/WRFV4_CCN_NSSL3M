@@ -50,6 +50,7 @@ SUBROUTINE microphysics_driver(                                          &
                       ,qndrop_curr,qni_curr,qh_curr,qnh_curr             &
                       ,qzr_curr,qzi_curr,qzs_curr,qzg_curr,qzh_curr      &
                       ,qns_curr,qnr_curr,qng_curr,qnn_curr,qnc_curr      &
+                      ,qnnuf_curr,f_qnnuf                                &
                       ,qnwfa_curr,qnifa_curr                             & ! for water/ice-friendly aerosols
                       ,f_qnwfa,f_qnifa                                   & ! for water/ice-friendly aerosols
                       ,qvolg_curr,qvolh_curr                             &
@@ -695,7 +696,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                  ,cldfra, cldfra_old, exch_h                      &
                  ,qv_curr,qc_curr,qr_curr,qi_curr,qs_curr,qg_curr &
                  ,qt_curr,qndrop_curr,qni_curr,qh_curr,qnh_curr   &
-                 ,qns_curr,qnr_curr,qng_curr,qnn_curr,qnc_curr    &
+                 ,qns_curr,qnr_curr,qng_curr,qnn_curr,qnnuf_curr,qnc_curr    &
                  ,qic_curr,qip_curr,qid_curr &
                  ,qnic_curr,qnip_curr,qnid_curr &
                  ,qzr_curr,qzi_curr,qzs_curr,qzg_curr,qzh_curr    &
@@ -778,7 +779,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 !
 
    LOGICAL, OPTIONAL :: f_qv,f_qc,f_qr,f_qi,f_qs,f_qg,f_qndrop,f_qni,f_qt    &
-                       ,f_qns,f_qnr,f_qng,f_qnn,f_qnc,f_qh,f_qnh,f_qzr       &
+                       ,f_qns,f_qnr,f_qng,f_qnn,f_qnnuf,f_qnc,f_qh,f_qnh,f_qzr       &
                       ,f_effr,f_ice_effr,f_tot_effr &
                        ,f_qic_effr,f_qip_effr,f_qid_effr &
                       ,f_qic,f_qip,f_qid &
@@ -2652,10 +2653,12 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      VHW=qvolg_curr,                     &
                      VHL=qvolh_curr,                     &
                      cn=qnn_curr,                        &
+                     cnuf=qnnuf_curr, f_cnuf=f_qnnuf,    &
                      PII=pi_phy,                         &
                      P=p,                                &
                      W=w,                                &
                      DZ=dz8w,                            &
+                     dx=dx, dy=dy,                       &
                      DTP=dt,                             &
                      DN=rho,                             &
                      RAINNC   = RAINNC,                  &
@@ -2708,6 +2711,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      QH=qg_curr,                         &
                      QHL=qh_curr,                        &
                      cn=qnn_curr,                        &
+                     cnuf=qnnuf_curr, f_cnuf=f_qnnuf,    &
                      CCW=qndrop_curr,                       &
                      CRW=qnr_curr,                       &
                      CCI=qni_curr,                       &

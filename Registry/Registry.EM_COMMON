@@ -560,6 +560,8 @@ state   real    qnh            ikjftb  scalar      1         -     \
    i0rhusdf=(bdy_interp:dt)    "QNHAIL"        "Hail Number concentration" "# kg(-1)"
 state   real    qnn            ikjftb  scalar      1         -     \
    i0rhusdf=(bdy_interp:dt)    "QNCCN"         "CCN Number concentration" "# kg(-1)"
+state   real    qnnuf          ikjftb  scalar      1         -     \
+   i0rhusdf=(bdy_interp:dt)    "QNCCNUF"       "Ultra-fine CCN Number concentration" "# kg(-1)"
 state   real    qnc            ikjftb  scalar      1         -     \
    i0rhusdf=(bdy_interp:dt)    "QNCLOUD"       "cloud water Number concentration" "# kg(-1)"
 state   real    qvolg          ikjftb  scalar      1         -     \
@@ -2388,6 +2390,7 @@ rconfig   logical  write_thompson_tables   namelist,physics     1           .tru
 rconfig   integer     mp_physics          namelist,physics	max_domains    -1     irh       "mp_physics"            ""      ""
 #rconfig   integer     milbrandt_ccntype   namelist,physics      max_domains    0       rh       "milbrandt select maritime(1)/continental(2)"  ""      ""
 rconfig   real     nssl_cccn              namelist,physics      max_domains  0.5e9    rh       "Base CCN concentration for NSSL microphysics"  ""      ""
+rconfig   real     nssl_cccnuf            namelist,physics      1            0.0e9    rh       "Base UF CCN concentration for NSSL microphysics"  ""      ""
 rconfig   real     nssl_alphah            namelist,physics      max_domains   0       rh       "Graupel PSD shape paramter"  ""      ""
 rconfig   real     nssl_alphahl           namelist,physics      max_domains   1       rh       "Hail PSD shape paramter"  ""      ""
 rconfig   real     nssl_cnoh              namelist,physics      max_domains  4.e5     rh       "Graupel intercept paramter"  ""      ""
@@ -2397,6 +2400,7 @@ rconfig   real     nssl_cnos              namelist,physics      max_domains  3.e
 rconfig   real     nssl_rho_qh            namelist,physics      max_domains  500.     rh       "Graupel particle density"  ""      ""
 rconfig   real     nssl_rho_qhl           namelist,physics      max_domains  900.     rh       "Hail particle density"  ""      ""
 rconfig   real     nssl_rho_qs            namelist,physics      max_domains  100.     rh       "Snow particle density"  ""      ""
+rconfig   integer   nssl_ufccn            namelist,physics      1            0        rh       "Flag for ultra-fine CCN"    ""      ""
 rconfig   integer     CCNTY               namelist,physics      1            2        rh       "Aerosol background type for NTU microphysics"  ""   ""
 
 # Lightning Qv Nudging 
@@ -3040,6 +3044,9 @@ package   gsfcgcescheme_dfi   mp_physics_dfi==97     -             dfi_moist:dfi
 
 package   noprogn       progn==0                     -             -
 package   progndrop     progn==1                     -             scalar:qndrop;dfi_scalar:dfi_qndrop;state:qndropsource
+
+package   ufccn_off      nssl_ufccn==0               -             -
+package   ufccn_on       nssl_ufccn==1               -             scalar:qnnuf
 
 package   noqndrop      alloc_qndropsource==0        -             -
 package   qndrop        alloc_qndropsource==1        -             state:qndropsource
