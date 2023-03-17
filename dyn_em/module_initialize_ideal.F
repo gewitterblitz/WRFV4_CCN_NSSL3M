@@ -188,6 +188,7 @@ CONTAINS
    
    real :: sst_input = 300.
    LOGICAL :: real_soil = .false.
+   
 
    NAMELIST /init_ideal/ nxc,nyc,delt,use_eta_levels, &
         ugrid,vgrid,setccn,use_snd_plevels,use_snd_zlevels,numbub,nxb,nyb, &
@@ -241,6 +242,9 @@ CONTAINS
   close(15)
 
    CALL model_to_grid_config_rec ( grid%id , model_config_rec , config_flags )
+   
+   grid%u_frame = ugrid
+   grid%v_frame = vgrid
 
   ideal_constants: SELECT CASE ( model_config_rec%ideal_case )
   CASE ( hill2d_x )

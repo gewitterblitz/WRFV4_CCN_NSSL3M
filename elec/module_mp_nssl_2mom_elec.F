@@ -1,6 +1,6 @@
 !WRF:MODEL_LAYER:PHYSICS
 
-! prepocessed on "Mar 16 2023" at "11:06:16"
+! prepocessed on "Mar 17 2023" at "13:44:44"
 
 
 
@@ -251,6 +251,9 @@ MODULE module_mp_nssl_2mom
   logical :: restoreccn = .true. ! whether or not to nudge CCN back to base state (qccn) (only applies if CCNA is NOT predicted)
   real    :: ccntimeconst = 3600.  ! time constant for CCN restore (either for CCNA or when restoreccn = true)
   real, private  :: restoreccnfrac = 1.0  ! fraction of evaporated droplets that restore CCN
+  real    :: ufccntimeconst = 6.*3600.  ! time constant for UFCCN decay (Blossey et al. 2018)
+  real    :: ufbackground = 0.1e9       ! background ccnuf value (Blossey et al.)
+  logical :: decayufccn = .false.
 
   integer :: shipccn = 0 ! if > 0, add CCN in designated area: 1 = center; 2 = uniform
   real    :: shipz1 = 2000. ! Max depth of added CCN
@@ -1040,6 +1043,7 @@ MODULE module_mp_nssl_2mom
                         icnuclimit,     &
                         irenuc,         &
                         restoreccn, ccntimeconst, cck, &
+                        decayufccn, ufccntimeconst, &
                         switchccn, old_cccn,  &
                         ciintmx,        &
                         itype1, itype2, &
@@ -1299,6 +1303,7 @@ MODULE module_mp_nssl_2mom
 
       IF ( iufccn > 0 ) THEN ! make sure to use option that uses UF ccn
         irenuc = 7
+        IF ( ccnuf == 0.0 ) decayufccn = .true. ! assume surface emission and need decay
       ENDIF
       
 
@@ -2839,7 +2844,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
           ENDIF
 
           IF ( lccnuf > 0 .and. flag_cnuf ) THEN
-            an(ix,1,kz,lccnuf) = cnuf(ix,kz,jy)
+            an(ix,1,kz,lccnuf) = Max(0.0, cnuf(ix,kz,jy) )
           ENDIF
 
           IF ( lccna > 1 ) THEN
@@ -3495,6 +3500,12 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
          ENDIF
 
           IF ( lccnuf > 0 .and. flag_cnuf ) THEN
+            IF ( decayufccn ) THEN
+              IF ( an(ix,1,kz,lccnuf) > ufbackground ) THEN
+                an(ix,1,kz,lccnuf) = an(ix,1,kz,lccnuf) - (an(ix,1,kz,lccnuf) - &
+                             ufbackground)*exp(-dtp/ufccntimeconst)
+              ENDIF
+            ENDIF
             cnuf(ix,kz,jy) = an(ix,1,kz,lccnuf)
           ENDIF
 
