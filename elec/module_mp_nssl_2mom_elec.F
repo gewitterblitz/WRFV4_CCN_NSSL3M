@@ -1,6 +1,6 @@
 !WRF:MODEL_LAYER:PHYSICS
 
-! prepocessed on "Mar 13 2023" at "22:50:04"
+! prepocessed on "Mar 16 2023" at "11:06:16"
 
 
 
@@ -232,8 +232,9 @@ MODULE module_mp_nssl_2mom
   real   , private :: qcmincwrn      = 2.0e-3    ! qc threshold for autonconversion (LFO; for 10ICE use qminrncw for ircnw != 5)
   real   , private :: cwdiap         = 20.0e-6   ! threshold diameter of cloud drops (Ferrier 1994 autoconversion)
   real   , private :: cwdisp         = 0.15      ! assume droplet dispersion parameter (can be 0.3 for maritime)
-  real   , private  :: ccn            = 0.6e+09   ! set in namelist!! Central plains CCN value
-  real   , public  :: qccn             ! ccn "mixing ratio"
+  real   , private :: ccn            = 0.6e+09   ! set in namelist!! Central plains CCN value
+  real   , private :: ccnuf          = 0        ! set in namelist!! Central plains CCN value
+  real   , public  :: qccn, qccnuf               ! ccn "mixing ratio"
   real   , private :: old_qccn = -1.0
   integer, private :: iauttim        = 1         ! 10-ice rain delay flag
   real   , private :: auttim         = 300.      ! 10-ice rain delay time
@@ -256,6 +257,7 @@ MODULE module_mp_nssl_2mom
   real    :: shipz0 = 300. ! exponential decay const in vertical ccn forcing exp(-z/z0ship)
   real    :: shipycenter = 50.e3
   real    :: shiphalfwidth = 8.e3
+  real    :: shipemissrate = 1.e-11
 ! sedimentation flags
 ! itfall -> 0 = 1st order fallout (other options removed)
 ! iscfall, infall -> fallout options for charge and number concentration, respectively
@@ -1154,9 +1156,9 @@ MODULE module_mp_nssl_2mom
                         snowmeltdia,    &
                         delta_alphamlr, &
                         iqvsopt,     &
-                        maxsupersat, &
+                        maxsupersat, ssmxuf, &
                         charging_border, nonigrd, &
-                        shipccn, shipz0, shipz1, shiphalfwidth, &
+                        shipccn, shipz0, shipz1, shiphalfwidth, shipemissrate, &
                         do_accurate_sedimentation, interval_sedi_vt
 ! #####################################################################
 ! #####################################################################
@@ -1278,6 +1280,8 @@ MODULE module_mp_nssl_2mom
         turn_on_ccna = .true.
         irenuc = 7
       ENDIF
+      ccnuf     = Abs( nssl_params(14) )
+!      write(0,*) 'nssl_init: nssl_params(14) = ',nssl_params(14),ccnuf
 
       ENDIF
 !      ipelec   = Nint(nssl_params(11))
@@ -1293,7 +1297,9 @@ MODULE module_mp_nssl_2mom
       IF ( present(nssl_ufccn) ) iufccn = nssl_ufccn
 
 
-
+      IF ( iufccn > 0 ) THEN ! make sure to use option that uses UF ccn
+        irenuc = 7
+      ENDIF
       
 
 
@@ -1931,6 +1937,7 @@ MODULE module_mp_nssl_2mom
       IF ( lzr > 0 ) irfall = 0
 
       qccn = ccn/rho00
+      qccnuf = ccnuf/rho00
       IF ( old_cccn > 0.0 ) THEN
          old_qccn = old_cccn/rho00
       ELSE
@@ -2533,6 +2540,18 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
          ENDDO
         ENDDO
       ENDIF
+
+       IF ( lccnuf > 1 .and. flag_cnuf .and. ccnuf > 1.0 ) THEN
+!       write(0,*) 'set cnuf1'
+        DO jy = jts,jte
+         DO kz = kts,kte
+          DO ix = its,ite
+            cnuf(ix,kz,jy) = qccnuf
+          ENDDO
+         ENDDO
+        ENDDO
+       ENDIF
+
      ENDIF
 
      IF ( itimestep == 1 .and. invertccn .and.  present( cn ) ) THEN
@@ -2556,6 +2575,18 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
            ENDDO
          ENDDO
        ENDDO
+
+       IF ( lccnuf > 1 .and. flag_cnuf .and. ccnuf > 1.0 ) THEN
+!       write(0,*) 'set cnuf (invertccn)'
+        DO jy = jts,jte
+         DO kz = kts,kte
+          DO ix = its,ite
+             cnuf(ix,kz,jy) = qccnuf - cnuf(ix,kz,jy)
+          ENDDO
+         ENDDO
+        ENDDO
+       ENDIF
+
        ENDIF
 
      IF ( switchccn .and. lccna > 1 .and. .not. invertccn) THEN
@@ -2574,13 +2605,12 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
 
 !     ENDIF ! itimestep == 1
 
-     IF ( debugdriver ) write(0,*) 'N2M: done ccn stuff '
 
-    IF ( shipccn > 0 .and. flag_cnuf ) THEN
+    IF ( shipccn > 0 .and. flag_cnuf  ) THEN
       ycent = dy*(jde - jds)/2.0
 !      write(0,*) 'ycent = ',ycent
       emissrate = -1.0
-      emissrate0 = 1.e-11/1.5e-18 ! rate m-2 s-1; Blossey et al. 2018: emission rate/mass per aerosol
+      emissrate0 = shipemissrate/1.5e-18 ! rate m-2 s-1; Blossey et al. 2018: emission rate/mass per aerosol
       fach(:) = 0.0
       factot = 0.0
       n = 0
@@ -2618,11 +2648,9 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
 !        write(0,*) 'emissrate1 = ', emissrate1
          ix = jts
          kz = 1
-       !  z = -dz(its,kz,jy)/2.0 ! hack assuming flat surface
+      !   z = -dz(its,kz,jy)/2.0 ! hack assuming flat surface
          DO kz = kts,kte
-        ! 
-        z = z + dz(its,kz,jy)
-           ! IF ( z <= shipz1 ) THEN
+           ! z = z + dz(its,kz,jy)
            IF ( fach(kz) > 0.001 ) THEN
            ! fac = exp(-z/shipz0)
            DO ix = its,ite
@@ -2632,18 +2660,15 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
 
            ENDDO
            
-           ELSE
-            exit
+           ELSEIF ( kz > kts ) THEN
+             exit
            ENDIF
          ENDDO
       ENDIF
       ENDDO
 !     write(0,*) 'max emissrate = ',emissrate
-    ELSEIF ( shipccn > 0 .and. .not. flag_cnuf ) THEN
-      write(0,*) 'N2M: shipccn is on but flag_ncuf is false: ',shipccn,flag_cnuf
     ENDIF
 
-     IF ( debugdriver ) write(0,*) 'N2M: done ccn stuff '
 
 ! sedimentation settings
 
@@ -3625,6 +3650,17 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
            ENDDO
          ENDDO
        ENDDO
+
+       IF ( lccnuf > 1 .and. flag_cnuf .and. ccnuf > 1.0 ) THEN
+        DO jy = jts,jte
+         DO kz = kts,kte
+          DO ix = its,ite
+            cnuf(ix,kz,jy) = qccnuf - cnuf(ix,kz,jy)
+          ENDDO
+         ENDDO
+        ENDDO
+       ENDIF
+
        ENDIF
 
 
@@ -13292,7 +13328,7 @@ END SUBROUTINE nssl_2mom_driver
          !  write(0,*) 'k,cn = ',kgs(mgs),cn(mgs),ssf(mgs)
          !  write(0,*) 'ccn-ccna = ',cnuc(mgs) - ccna(mgs),ccnc(mgs) - ccna(mgs)
 !           IF ( ccncuf(mgs) > 0.0 .and. cn(mgs) < 1.e-3 .and. ssmax(mgs) > 1.0 ) THEN
-           IF ( ccncuf(mgs) > 0.0 .and. ssf(mgs) > ssmxuf .and. ssmax(mgs) > ssmxuf ) THEN
+           IF ( ccncuf(mgs) > 0.0 .and. ssf(mgs) > ssmxuf .and. ( ssmax(mgs) > ssmxuf .or. lss < 1 ) ) THEN
             CNuf(mgs) =  Min( ccncuf(mgs), CCNE0*ccncuf(mgs)**(2./(2.+cck))*Max(0.0,wvel(mgs))**cnexp )! *Min(1.0,1./dtp) ! 0.3465
           !  IF ( cnuf(mgs) >= 0.0 ) write(0,*) 'cnuf, k = ',cnuf(mgs),ccncuf(mgs),kgs(mgs)
            ENDIF

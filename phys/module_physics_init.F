@@ -4456,6 +4456,9 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
      nssl_params(10) = nssl_rho_qs
      nssl_params(11) = nssl_ipelec_tmp
      nssl_params(12) = nssl_isaund
+     nssl_params(13) = 0 ! for internal control
+     nssl_params(14) = config_flags%nssl_cccnuf
+     ! write(0,*) 'phys_init: nssl_params(14) = ',nssl_params(14)
 
    ENDIF
 
