@@ -188,13 +188,14 @@ CONTAINS
    
    real :: sst_input = 300.
    LOGICAL :: real_soil = .false.
+   logical :: icoriolis = .false.
    
 
    NAMELIST /init_ideal/ nxc,nyc,delt,use_eta_levels, &
         ugrid,vgrid,setccn,use_snd_plevels,use_snd_zlevels,numbub,nxb,nyb, &
         xradbub,yradbub,zradbub,moisten,mtn_ht,ido_terrain,centlat, centlon, lm, &
         lu_input, vegfra, canwat, isltyp, sst_input, &
-        real_soil
+        real_soil, icoriolis
 
    SELECT CASE ( model_data_order )
          CASE ( DATA_ORDER_ZXY )
@@ -642,7 +643,11 @@ CONTAINS
          grid%cosa(i,j)     = 1.
          grid%e(i,j)        = 0.
          grid%xlat(i,j)     = 10.
+         IF ( icoriolis ) THEN
          grid%f(i,j)        = 2.5e-5
+         ELSE
+         grid%f(i,j)        = 0.0
+         ENDIF
          grid%xlong(i,j)     = 0.
 ! Hard-wire the ocean-land configuration
 ! all ocean
@@ -879,7 +884,11 @@ CONTAINS
          grid%cosa(i,j)     = 1.
          grid%e(i,j)        = 0.
 !  for LES, include Coriolis force
+         IF ( icoriolis ) THEN
          grid%f(i,j)        = 1.e-4
+         ELSE
+         grid%f(i,j) = 0.0
+         ENDIF
 
       END DO
    END DO
