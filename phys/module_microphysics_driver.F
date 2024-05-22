@@ -52,6 +52,7 @@ SUBROUTINE microphysics_driver(                                          &
                       ,qndrop_curr,qni_curr,qh_curr,qnh_curr             &
                       ,qzr_curr,qzi_curr,qzs_curr,qzg_curr,qzh_curr      &
                       ,qns_curr,qnr_curr,qng_curr,qnn_curr,qnc_curr      &
+                      ,qnna_curr                                         &
                       ,qnwfa_curr,qnifa_curr,qnbca_curr                  & ! for water/ice-friendly/black carbon aerosols
                       ,f_qnwfa,f_qnifa,f_qnbca                           & ! for water/ice-friendly/black carbon aerosols
                       ,qvolg_curr,qvolh_curr                             &
@@ -69,7 +70,7 @@ SUBROUTINE microphysics_driver(                                          &
                       ,qic_effr_curr,qip_effr_curr,qid_effr_curr         &             
                       ,f_qv,f_qc,f_qr,f_qi,f_qs,f_qg,f_qndrop,f_qni      &
                       ,f_qns,f_qnr,f_qng,f_qnc,f_qnn,f_qh,f_qnh          &
-                      ,            f_qzr,f_qzi,f_qzs,f_qzg,f_qzh         &
+                      ,    f_qnna, f_qzr,f_qzi,f_qzs,f_qzg,f_qzh         &
                       ,f_qvolg,f_qvolh                                   &
                       ,f_qic,f_qip,f_qid &
                       ,f_qnic,f_qnip,f_qnid &
@@ -632,7 +633,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                  ,qv_curr,qc_curr,qr_curr,qi_curr,qs_curr,qg_curr &
                  ,qt_curr,qndrop_curr,qni_curr,qh_curr,qnh_curr   &
                  ,qns_curr,qnr_curr,qng_curr,qnn_curr,qnc_curr    &
-                 ,qic_curr,qip_curr,qid_curr &
+                 ,qic_curr,qip_curr,qid_curr,qnna_curr            &
                  ,qnic_curr,qnip_curr,qnid_curr &
                  ,qzr_curr,qzi_curr,qzs_curr,qzg_curr,qzh_curr    &
                  ,qir_curr,qib_curr                               & ! for P3
@@ -711,8 +712,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                                          ,tbpvs_state,tbpvs0_state
 !
 
-   LOGICAL, OPTIONAL :: f_qv,f_qc,f_qr,f_qi,f_qs,f_qg,f_qndrop,f_qni,f_qt    &
-                       ,f_qns,f_qnr,f_qng,f_qnn,f_qnc,f_qh,f_qnh,f_qzr       &
+   LOGICAL, OPTIONAL :: f_qv,f_qc,f_qr,f_qi,f_qs,f_qg,f_qndrop,f_qni,f_qt     &
+                       ,f_qns,f_qnr,f_qng,f_qnn,f_qnna,f_qnc,f_qh,f_qnh,f_qzr &
                       ,f_effr,f_ice_effr,f_tot_effr &
                        ,f_qic_effr,f_qip_effr,f_qid_effr &
                       ,f_qic,f_qip,f_qid &
@@ -1972,6 +1973,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      ZHW=qzg_curr,  f_zhw = f_qzg,       &
                      ZHL=qzh_curr,  f_zhl = f_qzh,       &
                      cn=qnn_curr,  f_cn=f_qnn,           &
+                     cna=qnna_curr,  f_cna=f_qnna,       &
                      PII=pi_phy,                         &
                      P=p,                                &
                      W=w,                                &
