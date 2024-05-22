@@ -48,6 +48,7 @@ Option flags (integer; apply to all domains except nssl_hail_on):
                    default 800.) (Only needed for turning density off)
 
  nssl_ccn_on : predicted CCN concentration: default is on (1) for mp_physics=18
+               For nssl_ccn_on=2, see below for "3D CCN State"
 
  nssl_hail_on : If not set explicitly, it is set automatically to 1. This is the only
                 flag with dimensions of 'max_domains' e.g., so that hail can be turned
@@ -126,6 +127,8 @@ In summary, to get something closer to previous behavior, use the following:
   ihlcnh = 1
 /
 
+#------- 
+
 Snow Aggregation and reflectivity:
 
 Snow self-collection (aggregation) has been curbed in the 4.6 version by reducing the collision efficiency and the temperature range over which aggregation is allowed (esstem):
@@ -137,6 +140,21 @@ Snow self-collection (aggregation) has been curbed in the 4.6 version by reducin
   If desired, some further reduction in aggregation can be gained from setting iessopt=4, which reduces ess0 to 0.1 (80% reduction) in conditions of ice subsaturation (RHice < 100%).
   Snow reflectivity formerly had a default setting that turned on a crude bright band enhancement (iusewetsnow=1). This is now turned off by default (iusewetsnow=0)
   These snow parameters can be accessed through the nssl_mp_params namelist.
+
+#------- 
+"3D CCN State"
+  To use an arbitrary field of CCN (rather than a uniform CCN number mixing ratio), use the following settings:
+  
+  &physics
+     nssl_ccn_on = 2
+  /
+  &nssl_mp_params
+    irenuc = 5 or 7
+  /
+  
+  The first option (nssl_ccn_on=2) enables both the CCN and CCNA variables (unactivated and activated CCN counts, respectively). The irenuc=5 or 7 option uses the CCN field as the background value to compute activation compared to the number already activated. This leaves the CCN field untouched (except by advection).
+
+#------- 
 
 References:
 
