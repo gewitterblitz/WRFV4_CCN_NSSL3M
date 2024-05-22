@@ -96,13 +96,18 @@ Hydrometeor size distributions are assumed to follow a gamma functional form. (S
 
 Cloud concentration nuclei (CCN) concentration is predicted as in Mansell et al. (2010)  with a bulk activation spectrum approximating small aerosols. (New option nssl_ccn_is_ccna=1 instead predicts the number of activated CCN.) The model tracks the number of unactivated CCN, and the local CCN concentration is depleted as droplets are activated, either at cloud base or in cloud. The CCN are subjected to advection and subgrid turbulent mixing but have no other interactions with hydrometeors; for example, scavenging by raindrops is omitted. CCN are restored by droplet evaporation and by a gradual regeneration when no hydrometeors are present (ccntimeconst). Aerosol sensitivity is enhanced by explicitly treating droplet condensation instead of using a saturation adjustment. Supersaturation (within reason) is allowed to persist in updraft with low droplet concentration.
 
-Droplet activation option method is controlled by the 'irenuc' option (internal to NSSL module). The default option (2) depletes CCN from the unactivated CCN field. A new option (7) instead counts the number of activated CCN (nucleated droplets) with the assumption of an initial constant CCN number mixing ratio. Option 7 better handles supersaturation at low CCN (e.g., maritime) concentrations by allowing extra droplet activation at high SS.
+Droplet activation option method is controlled by the 'irenuc' option (internal to NSSL module). The default option (2) depletes CCN from the unactivated CCN field. A new option (7) instead counts the number of activated CCN (nucleated droplets) with the assumption of an initial constant CCN number mixing ratio. Options 5 and 7 better handle supersaturation at low CCN (e.g., maritime) concentrations by allowing extra droplet activation at high SS. Option irenuc=2 can result in unrealistic supersaturations under 'clean' (e.g., maritime) conditions (i.e., low values of nssl_cccn). Options 5 and 7 keep the resolved supersaturation under better control (5 somewhat more than 7 because it assumes more small aerosols can be activated from the CCN spectrum.)
 
   irenuc     : (nssl_mp_params namelist)
                2 = ccn field is UNactivated aerosol (default; old droplet activation)
                    Can switch to counting activated CCN with nssl_ccn_is_ccna=1
-               7 = ccn field must be ACTVIATED aerosol (new droplet activation) 
+               5 or 7 = ccn field must be ACTVIATED aerosol (new droplet activation) 
                    Must have nssl_ccn_on=1 for irenuc=7
+                  5 : Allows some new activation even when all CCN have been depleted
+                      (i.e., allows Nccna > Nccn) when the supersaturation is large
+                  7 : Reserves 10% of the CCN as 'small' aerosols that are activated 
+                      at high residual supersaturation
+               
 
 Excessive size sorting (common in 2-moment schemes) is effectively controlled by an adaptive breakup method that prevents reflectivity growth by sedimentation (Mansell 2010). For 2-moment, infall=4 (default; nssl_mp_params namelist) is recommended. For 3-moment, infall only really applies to droplets, cloud ice, and snow.
 
@@ -143,17 +148,34 @@ Snow self-collection (aggregation) has been curbed in the 4.6 version by reducin
 
 #------- 
 "3D CCN State"
-  To use an arbitrary field of CCN (rather than a uniform CCN number mixing ratio), use the following settings:
-  
+  To use an arbitrary field of CCN (rather than a uniform CCN number mixing ratio), use either of the following settings:
+  (1) CCN array only (nucleation decrements the unactivated CCN count)
   &physics
+     nssl_ccn_is_ccna = 0,
+     nssl_ccn_on = 1
+  /
+  &nssl_mp_params
+    irenuc = 2
+    restoreccn = .false.
+  /
+    
+  (2) Both CCN and CCNA arrays (CCN count is preserved, and activation increments the CCNA count of activated CCN) (probably the more physically consistent option)
+  &physics
+     nssl_ccn_is_ccna = 0,
      nssl_ccn_on = 2
   /
   &nssl_mp_params
     irenuc = 5 or 7
+    ! restoreccn can be set to true (default) or false. True will gradually damp CCNA
+    !    when the air is clear (no hydrometeors)
   /
   
-  The first option (nssl_ccn_on=2) enables both the CCN and CCNA variables (unactivated and activated CCN counts, respectively). The irenuc=5 or 7 option uses the CCN field as the background value to compute activation compared to the number already activated. This leaves the CCN field untouched (except by advection).
-
+  The option nssl_ccn_is_ccna=0 tells the scheme that qnn is the count of unactivated CCN.  Otherwise it assumes that qnn is used as the number of activated CCN with a constant background field of CCN = nssl_cccn/1.225. 
+  
+  The option nssl_ccn_on=2 enables both the CCN and CCNA variables (unactivated and activated CCN counts, respectively). The irenuc=5 or 7 option uses the CCN field as the background value to compute activation compared to the number already activated. This leaves the CCN field untouched (except by advection).
+   
+   Note that a horizontally inhomogeneous CCN field can lead to unrealistic conditions because there is no 3D restore function. For example, a continental-maritime CCN contrast boundary with boundary layer flow from the sea to land will result in maritime CCN over land, as there is no current method to generate CCN over land to force back to a continental CCN count. An approach similar to the Thompson Aerosol-aware scheme could be used to force aerosol from a base state, but this has not been implemented.
+   
 #------- 
 
 References:
