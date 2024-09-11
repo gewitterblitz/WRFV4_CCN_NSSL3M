@@ -3966,6 +3966,8 @@ BENCH_START(micro_driver_tim)
       &        ,CCN4_GS=grid%CCN4_GS,CCN5_GS=grid%CCN5_GS,CCN6_GS=grid%CCN6_GS &
       &        ,CCN7_GS=grid%CCN7_GS,NR_CU=grid%NR_CU,QR_CU=grid%QR_CU,NS_CU=grid%NS_CU &
       &        ,QS_CU=grid%QS_CU,CU_UAF=grid%CU_UAF,mskf_refl_10cm=grid%mskf_refl_10cm  &
+      &        ,pcc2=grid%pcc2,pcr2=grid%pcr2,per2=grid%per2             &
+      &        ,pisub2=grid%pisub2,pfrz2=grid%pfrz2,pmlt2=grid%pmlt2     &
 ! WRF-Solar EPS
       &        ,multi_perturb=config_flags%multi_perturb                 &
       &        ,pert_thom=config_flags%pert_thom                         &

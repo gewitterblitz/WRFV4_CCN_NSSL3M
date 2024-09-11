@@ -1761,6 +1761,7 @@ endif
          ! NO OP
       END IF
       ccn_max_val = MAXVAL(scalar(its:MIN(ite,ide-1),kts:kte-1,jts:MIN(jte,jde-1),p_qnn))
+      WRITE(*,*) 'ccn_max_val = ', ccn_max_val 
 #if ( defined( DM_PARALLEL ) && ( ! defined( STUBMPI ) ) )
       ccn_max_val = wrf_dm_max_real ( ccn_max_val )
 #endif

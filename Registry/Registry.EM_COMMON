@@ -411,7 +411,12 @@ state   real    bldtacttime    -        -         -         -     r         "bld
 state   real    cudtacttime    -        -         -         -     r         "cudtacttime"              "CUDTACTTIME"         "CPS   ACTIVATION TIME in s"
 state   real    ltngacttime    -        -         -         -     r         "ltngacttime"              "LTNGACTTIME"         "LTNG  ACTIVATION TIME in s"
 state   real    power          ij       misc      1         -     irh       "Power"                   "Power production"         "W"
-
+state   real    pcc2           ikj      misc      1         -     rh        "PCDCE"                  "cloud droplet condensation and evaporation production" "kg kg-1"
+state   real    pcr2           ikj      misc      1         -     rh        "PRCOND"                 "rain condensation production" "kg kg-1"
+state   real    per2           ikj      misc      1         -     rh        "PREVAP"                 "rain evaporation production" "kg kg-1"
+state   real    pisub2         ikj      misc      1         -     rh        "PISUBDPV"               "ice deposition-sublimation production" "kg kg-1"
+state   real    pfrz2          ikj      misc      1         -     rh        "PFRZ"                   "total freezing production" "kg kg-1"
+state   real    pmlt2          ikj      misc      1         -     rh        "PMELT"                  "total melt production" "kg kg-1"
 
 # State for derived time quantities.  
 state   integer itimestep      -        -          -         -     rh         "itimestep"             ""         ""      
@@ -576,7 +581,6 @@ state   real    qvoli3            ikjftb  scalar      1         -     \
    i0rhusdf=(bdy_interp:dt)    "QVOLI3"           "Ice volume-3 mixing ratio" "m(3) kg(-1)"
 state   real    qaoli3            ikjftb  scalar      1         -     \
    i0rhusdf=(bdy_interp:dt)    "QAOLI3"           "Ice volume-3 times aspect ratio mixing ratio" "m(3) kg(-1)"
-
 state   real    -              ikjftb  dfi_scalar      1         -     -   -
 state   real    dfi_qndrop     ikjftb  dfi_scalar      1         -     \
    rusdf=(bdy_interp:dt)    "DFI_QNDROP"    "DFI Droplet number mixing ratio"        "# kg-1"

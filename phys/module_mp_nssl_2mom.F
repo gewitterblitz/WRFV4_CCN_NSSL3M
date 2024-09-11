@@ -979,7 +979,7 @@ MODULE module_mp_nssl_2mom
       real :: cckm,ccne,ccnefac,cnexp,CCNE0
 
       integer :: na = 9
-      integer :: nxtra = 1
+      integer :: nxtra = 6
       real gf4p5, gf4ds, gf4br
       real gsnow1, gsnow53, gsnow73
       real gfcinu1, gfcinu1p47, gfcinu2p47
@@ -2271,7 +2271,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
                               elec_physics,                                             &
                               induc,elecz,scion,sciona,                                 &
                               noninduc,noninducp,noninducn,                             &
-                              pcc2, pre2, depsubr,      &
+                              pcc2,pcr2,per2,pisub2,pfrz2,pmlt2,  &
                               mnucf2, melr2, ctr2,     &
                               rim1_2, rim2_2,rim3_2, &
                               nctr2, nnuccd2, nnucf2, &
@@ -2334,7 +2334,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
 
       real, dimension(ims:ime, kms:kme, jms:jme), intent(in)::  pii
       real, dimension(ims:ime, kms:kme, jms:jme), optional, intent(inout)::   &
-                              pcc2, pre2, depsubr,      &
+                              pcc2,pcr2,per2,pisub2,pfrz2,pmlt2, &
                               mnucf2, melr2, ctr2,     &
                               rim1_2, rim2_2,rim3_2, &
                               nctr2, nnuccd2, nnucf2, &
@@ -3144,7 +3144,15 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
           DO ix = its,ite
 ! example of using the 'axtra2d' array to get rates out of the microphysics routine for output.
 ! Search for 'axtra' to find example code below
-!            pcc2(ix,kz,jy)    = axtra2d(ix,1,kz,1)
+            pcc2(ix,kz,jy)    = axtra2d(ix,1,kz,1) ! condesation/evap of droplets
+            pcr2(ix,kz,jy)    = axtra2d(ix,1,kz,2) ! condensation of rain
+            per2(ix,kz,jy)    = axtra2d(ix,1,kz,3) ! evaporation of rain
+            pisub2(ix,kz,jy)  = axtra2d(ix,1,kz,4) ! deposition/sublimation of ice
+            pfrz2(ix,kz,jy)   = axtra2d(ix,1,kz,5) ! total freezing
+            pmlt2(ix,kz,jy)   = axtra2d(ix,1,kz,6) ! total melting
+            !prim2(ix,kz,jy)   = axtra2d(ix,1,kz,8) ! total riming 
+            
+            
           ENDDO
          ENDDO
      ENDIF
@@ -23645,15 +23653,15 @@ END SUBROUTINE nssl_2mom_driver
 ! Note that indices 1 and 2 are used in the nucond subroutine for condensation/evap of droplets (1) and
 !    condensation of rain (2)
 !
-!      IF ( io_flag .and. nxtra > 1 ) THEN
-!        DO mgs = 1,ngscnt
-!          axtra(igs(mgs),jy,kgs(mgs),3)  = pfrz(mgs) !
-!          axtra(igs(mgs),jy,kgs(mgs),4)  = qrcev(mgs) ! pre2
-!          axtra(igs(mgs),jy,kgs(mgs),5)  = psub(mgs) ! depsubr
-!          axtra(igs(mgs),jy,kgs(mgs),6)  = qrfrz(mgs) ! rain freezing (Bigg)
-!          axtra(igs(mgs),jy,kgs(mgs),7)  = pmlt(mgs) ! melr2
-!        ENDDO
-!      ENDIF
+      IF ( io_flag .and. nxtra > 1 ) THEN
+        DO mgs = 1,ngscnt
+          axtra(igs(mgs),jy,kgs(mgs),3)  = pevap(mgs) !
+          axtra(igs(mgs),jy,kgs(mgs),4)  = psub(mgs) ! pre2
+          axtra(igs(mgs),jy,kgs(mgs),5)  = pfrz(mgs) ! depsubr
+          axtra(igs(mgs),jy,kgs(mgs),6)  = pmlt(mgs) ! rain freezing (Bigg)
+          !axtra(igs(mgs),jy,kgs(mgs),7)  = pmlt(mgs) ! melr2
+        ENDDO
+      ENDIF
 
 
 
