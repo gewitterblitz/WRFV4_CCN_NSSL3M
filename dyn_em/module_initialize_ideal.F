@@ -2331,8 +2331,8 @@ MODULE module_initialize_ideal
                                         FACTZ(i,k,j) = missions(target_index)%ratio
                                 end if
 
-                                !print *, 'target altitude is =
-                                !',missions(target_index)%altitude
+                                !print *, 'target altitude is =',missions(target_index)%altitude
+                                print *, 'FACTZ(i,k,j) is', FACTZ(i,k,j)
                                 !print *, 'zcgs(i,k,j) is =',zcgs(i,k,j)
                                 !print *, 'i,j,k are', i,j,k
                                 !print *,  'zcgs(i,j,k)*1E-5 is

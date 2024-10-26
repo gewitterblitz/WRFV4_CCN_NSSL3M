@@ -34,6 +34,8 @@ CONTAINS
                      ,athbl, aqvbl, aubl, avbl                        &
                      ,athralw, athrasw                                &
                      ,h_diabatic, qv_diabatic                         &
+                     ,atlcond, aticond, atmelt, atfreeze, atrime      &
+                     ,pcc2,pcr2,per2,pisub2,pfrz2,pmlt2,prim2         &
                      ,rthcuten, rqvcuten, rucuten, rvcuten            &
                      ,rthshten, rqvshten, rushten, rvshten            &
                      ,rthblten, rqvblten, rublten, rvblten            &
@@ -173,14 +175,18 @@ CONTAINS
                                          ,athcu,aqvcu,aucu,avcu  &
                                          ,athsh,aqvsh,aush,avsh  &
                                          ,athbl,aqvbl,aubl,avbl  &
-                                               ,athralw,athrasw
+                                               ,athralw,athrasw  &
+                                         ,atlcond,aticond,atmelt &
+                                         ,atfreeze,atrime
 
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN) ::   &
                                          h_diabatic,qv_diabatic  &
                              ,rthcuten,rqvcuten,rucuten,rvcuten  &
                              ,rthshten,rqvshten,rushten,rvshten  &
                              ,rthblten,rqvblten,rublten,rvblten  &
-                                         ,rthratenlw,rthratensw
+                                         ,rthratenlw,rthratensw  &
+                             ,pcc2,pcr2,per2,pisub2,pfrz2,pmlt2  &
+                             ,prim2
 
    INTEGER, DIMENSION( ims:ime , jms:jme ), INTENT(INOUT) ::     &
                                                        I_RAINC,  &
@@ -234,6 +240,11 @@ CONTAINS
          DO i=i_start(ij),i_end(ij)
             athmp(i,k,j) = 0.
             aqvmp(i,k,j) = 0.
+            atlcond(i,k,j) = 0.
+            aticond(i,k,j) = 0.
+            atmelt(i,k,j) = 0.
+            atfreeze(i,k,j) = 0.
+            atrime(i,k,j) = 0.
             IF ( cu_used == 1 ) THEN
             athcu(i,k,j) = 0.
             aqvcu(i,k,j) = 0.
@@ -260,6 +271,11 @@ CONTAINS
       DO k=kps,kpe
       DO i=i_start(ij),i_end(ij)
          athmp(i,k,j)  = athmp(i,k,j)  +  h_diabatic(i,k,j)*dt
+         atlcond(i,k,j) = atlcond(i,k,j) + pcc2(i,k,j) + pcr2(i,k,j) + per2(i,k,j)
+         aticond(i,k,j) = aticond(i,k,j) + pisub2(i,k,j)
+         atmelt(i,k,j) = atmelt(i,k,j) + pmlt2(i,k,j)
+         atfreeze(i,k,j) = atfreeze(i,k,j) + pfrz2(i,k,j)
+         atrime(i,k,j) = atrime(i,k,j) + prim2(i,k,j)
          aqvmp(i,k,j)  = aqvmp(i,k,j)  +  qv_diabatic(i,k,j)*dt
          IF ( cu_used == 1 ) THEN
          athcu(i,k,j)  = athcu(i,k,j)  +  rthcuten(i,k,j)*dt

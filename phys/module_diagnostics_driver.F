@@ -380,6 +380,12 @@ CONTAINS
            ,rthblten=grid%rthblten  ,rqvblten=grid%rqvblten          &
            ,rublten=grid%rublten    ,rvblten=grid%rvblten            &
            ,rthratenlw=grid%rthratenlw  ,rthratensw=grid%rthratensw  &
+           ,atlcond=grid%atlcond, aticond=grid%aticond               &    
+           ,atmelt=grid%atmelt, atrime=grid%atrime                   &
+           ,atfreeze=grid%atfreeze                                   &
+           ,pcc2=grid%pcc2, pcr2=grid%pcr2, per2=grid%per2           &
+           ,pisub2=grid%pisub2, pfrz2=grid%pfrz2, pmlt2=grid%pmlt2   &
+           ,prim2=grid%prim2                                         &
       ! Selection flag 
                 ,DIAG_PRINT=config_flags%diag_print                  &
                 ,BUCKET_MM=config_flags%bucket_mm                    &

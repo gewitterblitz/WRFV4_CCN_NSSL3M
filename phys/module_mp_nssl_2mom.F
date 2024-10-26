@@ -979,7 +979,7 @@ MODULE module_mp_nssl_2mom
       real :: cckm,ccne,ccnefac,cnexp,CCNE0
 
       integer :: na = 9
-      integer :: nxtra = 6
+      integer :: nxtra = 8
       real gf4p5, gf4ds, gf4br
       real gsnow1, gsnow53, gsnow73
       real gfcinu1, gfcinu1p47, gfcinu2p47
@@ -2271,7 +2271,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
                               elec_physics,                                             &
                               induc,elecz,scion,sciona,                                 &
                               noninduc,noninducp,noninducn,                             &
-                              pcc2,pcr2,per2,pisub2,pfrz2,pmlt2,  &
+                              pcc2,pcr2,per2,pisub2,pfrz2,pmlt2,prim2,supersat,         &
                               mnucf2, melr2, ctr2,     &
                               rim1_2, rim2_2,rim3_2, &
                               nctr2, nnuccd2, nnucf2, &
@@ -2334,7 +2334,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
 
       real, dimension(ims:ime, kms:kme, jms:jme), intent(in)::  pii
       real, dimension(ims:ime, kms:kme, jms:jme), optional, intent(inout)::   &
-                              pcc2,pcr2,per2,pisub2,pfrz2,pmlt2, &
+                              pcc2,pcr2,per2,pisub2,pfrz2,pmlt2,prim2,supersat, &
                               mnucf2, melr2, ctr2,     &
                               rim1_2, rim2_2,rim3_2, &
                               nctr2, nnuccd2, nnucf2, &
@@ -3135,10 +3135,23 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
 
    ENDIF
 
+   DO kz = kts,kte
+         DO ix = its,ite
+           t0(ix,1,kz) = an(ix,1,kz,lt)*t77(ix,1,kz) ! temperature (Kelvin) 
+           ltemq = Int( (t0(ix,1,kz)-163.15)/fqsat+1.5 )
+           ltemq = Min( nqsat, Max(1,ltemq) )
 
+           t8s = t00(ix,1,kz)*tabqvs(ltemq)  !saturation mixing ratio wrt water
+
+           ! % supersaturation
+           axtra2d(ix,1,kz,8) = 100 * (an(ix,1,kz,lv)/t8s - 1.0)  
+         ENDDO 
+     ENDDO 
 
 
      ENDDO ! loopcnt=1,loopmax
+     
+
      IF ( present( pcc2 ) .and. makediag ) THEN
          DO kz = kts,kte
           DO ix = its,ite
@@ -3150,7 +3163,8 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
             pisub2(ix,kz,jy)  = axtra2d(ix,1,kz,4) ! deposition/sublimation of ice
             pfrz2(ix,kz,jy)   = axtra2d(ix,1,kz,5) ! total freezing
             pmlt2(ix,kz,jy)   = axtra2d(ix,1,kz,6) ! total melting
-            !prim2(ix,kz,jy)   = axtra2d(ix,1,kz,8) ! total riming 
+            prim2(ix,kz,jy)   = axtra2d(ix,1,kz,7) ! total riming
+            supersat(ix,kz,jy) = axtra2d(ix,1,kz,8) ! super-saturation wrt water
             
             
           ENDDO
@@ -9871,7 +9885,7 @@ END SUBROUTINE nssl_2mom_driver
           c1 = t00(ix,jy,kz)*tabqvs(ltemq)
 
           IF ( c1 > 0. ) THEN
-            ssfilt(ix,jy,kz) = 100.*(an(ix,jy,kz,lv)/c1 - 1.0)  ! from "new" values
+            ssfilt(ix,jy,kz) = 100.*( an(ix,jy,kz,lv)/c1 - 1.0)  ! from "new" values
           ENDIF
 
         ENDDO
@@ -10533,7 +10547,7 @@ END SUBROUTINE nssl_2mom_driver
         qwvp(mgs) = qwvp(mgs) + qx(mgs,lc)
         thetap(mgs) = thetap(mgs) - felvcp(mgs)*qx(mgs,lc)/(pi0(mgs))
         IF ( io_flag .and. nxtra > 1 ) THEN
-           axtra(igs(mgs),jy,kgs(mgs),1) = -qx(mgs,lc)/dtp
+           axtra(igs(mgs),jy,kgs(mgs),1) = -qx(mgs,lc) * felvcp(mgs) !-qx(mgs,lc)/dtp
         ENDIF
         qx(mgs,lc) = 0.
         IF ( restoreccn ) THEN
@@ -10586,7 +10600,7 @@ END SUBROUTINE nssl_2mom_driver
         ENDIF
         thetap(mgs) = thetap(mgs) - felvcp(mgs)*QEVAP/(pi0(mgs))
         IF ( io_flag .and. nxtra > 1 ) THEN
-           axtra(igs(mgs),jy,kgs(mgs),1) = -QEVAP/dtp
+           axtra(igs(mgs),jy,kgs(mgs),1) = -QEVAP * felvcp(mgs) !-QEVAP/dtp
         ENDIF
 
       ENDIF
@@ -10856,8 +10870,8 @@ END SUBROUTINE nssl_2mom_driver
            pipert(mgs) = pipert(mgs) + felvpi(mgs)*(DCLOUD + dqr)
         ENDIF
         IF ( io_flag .and. nxtra > 1 ) THEN
-           axtra(igs(mgs),jy,kgs(mgs),1) = DCLOUD/dtp
-           axtra(igs(mgs),jy,kgs(mgs),2) = axtra(igs(mgs),jy,kgs(mgs),2) + dqr/dtp
+           axtra(igs(mgs),jy,kgs(mgs),1) = DCLOUD * felvcp(mgs) !DCLOUD/dtp
+           axtra(igs(mgs),jy,kgs(mgs),2) = (axtra(igs(mgs),jy,kgs(mgs),2) + dqr/dtp) * dtp * felvcp(mgs) !axtra(igs(mgs),jy,kgs(mgs),2) + dqr/dtp
         ENDIF
         qwvp(mgs) = qwvp(mgs) - (DCLOUD + dqr)
         qx(mgs,lc) = qx(mgs,lc) + DCLOUD
@@ -10937,7 +10951,7 @@ END SUBROUTINE nssl_2mom_driver
         qwvp(mgs) = qwvp(mgs) - DCLOUD
         qx(mgs,lc) = qx(mgs,lc) + DCLOUD
         IF ( io_flag .and. nxtra > 1 ) THEN
-           axtra(igs(mgs),jy,kgs(mgs),1) = DCLOUD/dtp
+           axtra(igs(mgs),jy,kgs(mgs),1) = DCLOUD * felvcp(mgs) !DCLOUD/dtp
         ENDIF
         theta(mgs) = thetap(mgs) + theta0(mgs)
         temg(mgs) = theta(mgs)*pk(mgs) !( pres(mgs) / poo ) ** cap
@@ -11552,7 +11566,7 @@ END SUBROUTINE nssl_2mom_driver
         IF ( qvex .gt. 0.0 ) THEN
           thetap(mgs) = thetap(mgs) + felvcp(mgs)*qvex/(pi0(mgs))
           IF ( io_flag .and. nxtra > 1 ) THEN
-             axtra(igs(mgs),jy,kgs(mgs),1) = axtra(igs(mgs),jy,kgs(mgs),1) + qvex/dtp
+             axtra(igs(mgs),jy,kgs(mgs),1) = (axtra(igs(mgs),jy,kgs(mgs),1) + qvex/dtp)*dtp*felvcp(mgs) !axtra(igs(mgs),jy,kgs(mgs),1) + qvex/dtp
           ENDIF
           qwvp(mgs) = qwvp(mgs) - qvex
           qx(mgs,lc) = qx(mgs,lc) + qvex
@@ -12215,8 +12229,9 @@ END SUBROUTINE nssl_2mom_driver
       IF ( ndebug .ge. 1 ) write(6,*) 'END OF ICEZVD_DR'
 !
 !
-   
-   
+   !axtra(igs(mgs),jy,kgs(mgs),8) = (qv0(mgs) + qwvp(mgs))/qvs1
+
+    
    9999 RETURN
    
    END SUBROUTINE NUCOND
@@ -23655,10 +23670,33 @@ END SUBROUTINE nssl_2mom_driver
 !
       IF ( io_flag .and. nxtra > 1 ) THEN
         DO mgs = 1,ngscnt
-          axtra(igs(mgs),jy,kgs(mgs),3)  = pevap(mgs) !
-          axtra(igs(mgs),jy,kgs(mgs),4)  = psub(mgs) ! pre2
-          axtra(igs(mgs),jy,kgs(mgs),5)  = pfrz(mgs) ! depsubr
-          axtra(igs(mgs),jy,kgs(mgs),6)  = pmlt(mgs) ! rain freezing (Bigg)
+          axtra(igs(mgs),jy,kgs(mgs),3)  = dtp*qrcev(mgs)*felvcp(mgs)! dTemp due to rain evap 
+          axtra(igs(mgs),jy,kgs(mgs),4)  = dtp*psub(mgs)*felscp(mgs) ! dTemp due to ice diffusion 
+          axtra(igs(mgs),jy,kgs(mgs),5)  = dtp*(il5(mgs)*(1-imixedphase)*(qrfrz(mgs) + qiacr(mgs)) &
+                                               +il5(mgs)*(qwfrz(mgs)+qwctfz(mgs)))*felfcp(mgs) ! dTemp due to total freezing
+          axtra(igs(mgs),jy,kgs(mgs),6)  = dtp*pmlt(mgs)*felfcp(mgs) ! dTemp due to total melting
+
+          axtra(igs(mgs),jy,kgs(mgs),7) = dtp * ((il5(mgs) * (1 - imixedphase) * (qsacw(mgs) + qhacw(mgs) + &
+                                                  qhlacw(mgs) + qsacr(mgs) + qhacr(mgs) + qhlacr(mgs) + qsshr(mgs) + qhshr(mgs) + &
+                                                  qhlshr(mgs))) + il5(mgs) * qiacw(mgs)) * felfcp(mgs) ! dTemp due to total riming
+
+          !axtra(igs(mgs),jy,kgs(mgs),3)  = qrcev(mgs)*(felvcp(mgs)) ! dTemp due to rain evap 
+          !axtra(igs(mgs),jy,kgs(mgs),4)  = psub(mgs)*(felscp(mgs)) ! dTemp due to ice diffusion
+
+          !axtra(igs(mgs),jy,kgs(mgs),5) = &       
+          !                                &      ( il5(mgs)*(1 - imixedphase)*(qrfrz(mgs) + qiacr(mgs)) &
+          !                                &     +il5(mgs)*(qwfrz(mgs) + qwctfz(mgs)))*(felfcp(mgs))
+
+          !axtra(igs(mgs),jy,kgs(mgs),6)  = pmlt(mgs)*(felfcp(mgs)) ! dTemp dueto total melting
+
+          !axtra(igs(mgs),jy,kgs(mgs),7) =  &
+          !                                 &     ( il5(mgs)*(1 - imixedphase)*(                           &
+          !                                 &      qsacw(mgs) + qhacw(mgs) + qhlacw(mgs) + qsacr(mgs)      &
+          !                                 &     +qhacr(mgs) + qhlacr(mgs) + qsshr(mgs) + qhshr(mgs)      &
+          !                                 &     + qhlshr(mgs))                                           &
+          !                                 &     +il5(mgs)*(qiacw(mgs)))*(felfcp(mgs))
+
+
           !axtra(igs(mgs),jy,kgs(mgs),7)  = pmlt(mgs) ! melr2
         ENDDO
       ENDIF
