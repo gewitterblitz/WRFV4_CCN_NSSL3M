@@ -340,7 +340,7 @@ i1       real   alpha          ikj     dyn_em      1         -
 i1       real   a              ikj     dyn_em      1         -                                                  
 i1       real   gamma          ikj     dyn_em      1         -                                                  
 i1       real   c2a            ikj     dyn_em      1         -     -
-state    real   rho            ikj      misc       1         -     r      "RHO"              "DENSITY"         "Kg m-3"
+state    real   rho            ikj      misc       1         -     rh      "RHO"              "DENSITY"         "Kg m-3"
 i1       real   phm            ikj     dyn_em      1         -     -
 i1       real   cqu            ikj     dyn_em      1         -     -
 i1       real   cqv            ikj     dyn_em      1         -     -
