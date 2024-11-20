@@ -1001,6 +1001,24 @@ MODULE module_mp_nssl_2mom
       integer, parameter :: ac_opt = 0 ! option flag for alternate aerosol (for NUWRF only)
       logical, private :: nuaccoinp = .false.
 
+! T.Iguchi Y2021 Update
+!      logical :: ac_only = .true.  ! flag for considering ac_mode of CN only, or all nu,ac,co modes (still under construction)
+
+      logical :: arg_para = .true.  ! flag for Abdul-Razzak_and_Ghan parameterization works similarly to flag_qndrop, and neglects irenuc, ccna(mgs), and cnuc(mgs)
+      real, parameter :: nu_pmr = 7.5 * 1.e-3 * 1.e-6  ! aerosol radius (meter); these parameter values follow Cheng et al. (2007QJ)
+      real, parameter :: nu_pgw = 0.53  ! Unlike original Abdul-Razzak_and_Ghan, this value is used without log (Cheng et al. 2007QJ)
+      real :: nu_kappa = 0.61  ! ammonium sulfate as CCN (Petters and Kreidenweis, 2007ACP)
+      real, parameter :: ac_pmr = 3.8 * 1.e-2 * 1.e-6  ! aerosol radius (meter)
+      real, parameter :: ac_pgw = 0.69
+      real :: ac_kappa = 0.61  ! ammonium sulfate as CCN (Petters and Kreidenweis, 2007ACP)
+      real, parameter :: co_pmr = 0.51 * 1.e-6  ! aerosol radius (meter)
+      real, parameter :: co_pgw = 0.77
+      real :: co_kappa = 0.61  ! ammonium sulfate as CCN (Petters and Kreidenweis, 2007ACP)
+
+      real, parameter :: cn_minlimit = 1.e3  ! 1.e3 m-3 = 0.001 cm-3
+
+      logical :: dm15_para = .false.  ! flag for DeMott et al. (2015) parameterization for heterogenous freezing, regardless of "ibfc"
+
 ! Note to users: Many of these options are for development and not guaranteed to perform well.
 ! Some may not be functional depending on the version of the code.
 ! Some may be useful for ensemble physics diversity. Feel free to contact Ted Mansell if you have questions
@@ -4010,6 +4028,126 @@ END SUBROUTINE nssl_2mom_driver
       END Function delabk
 
 
+
+! #####################################################################
+!
+! #####################################################################
+!--------------------------------------------------------------------------
+      real function DERF(X)
+
+      implicit none
+     
+      real :: X
+      real, dimension(0 : 64) :: A, B
+      real :: W,T,Y
+      integer :: K,I
+           data A/                                                 &
+              0.00000000005958930743E0, -0.00000000113739022964E0, &
+              0.00000001466005199839E0, -0.00000016350354461960E0, &
+              0.00000164610044809620E0, -0.00001492559551950604E0, &
+              0.00012055331122299265E0, -0.00085483269811296660E0, &
+              0.00522397762482322257E0, -0.02686617064507733420E0, &
+              0.11283791670954881569E0, -0.37612638903183748117E0, &
+              1.12837916709551257377E0,                            &
+              0.00000000002372510631E0, -0.00000000045493253732E0, &
+              0.00000000590362766598E0, -0.00000006642090827576E0, &
+              0.00000067595634268133E0, -0.00000621188515924000E0, &
+              0.00005103883009709690E0, -0.00037015410692956173E0, &
+              0.00233307631218880978E0, -0.01254988477182192210E0, &
+              0.05657061146827041994E0, -0.21379664776456006580E0, &
+              0.84270079294971486929E0,                            &
+              0.00000000000949905026E0, -0.00000000018310229805E0, &
+              0.00000000239463074000E0, -0.00000002721444369609E0, &
+              0.00000028045522331686E0, -0.00000261830022482897E0, &
+              0.00002195455056768781E0, -0.00016358986921372656E0, &
+              0.00107052153564110318E0, -0.00608284718113590151E0, &
+              0.02986978465246258244E0, -0.13055593046562267625E0, &
+              0.67493323603965504676E0,                            &
+              0.00000000000382722073E0, -0.00000000007421598602E0, &
+              0.00000000097930574080E0, -0.00000001126008898854E0, &
+              0.00000011775134830784E0, -0.00000111992758382650E0, &
+              0.00000962023443095201E0, -0.00007404402135070773E0, &
+              0.00050689993654144881E0, -0.00307553051439272889E0, &
+              0.01668977892553165586E0, -0.08548534594781312114E0, &
+              0.56909076642393639985E0,                            &
+              0.00000000000155296588E0, -0.00000000003032205868E0, &
+              0.00000000040424830707E0, -0.00000000471135111493E0, &
+              0.00000005011915876293E0, -0.00000048722516178974E0, &
+              0.00000430683284629395E0, -0.00003445026145385764E0, &
+              0.00024879276133931664E0, -0.00162940941748079288E0, &
+              0.00988786373932350462E0, -0.05962426839442303805E0, &
+              0.49766113250947636708E0 /
+           data (B(I), I = 0, 12) /                                 &
+              -0.00000000029734388465E0,  0.00000000269776334046E0, &
+              -0.00000000640788827665E0, -0.00000001667820132100E0, &
+              -0.00000021854388148686E0,  0.00000266246030457984E0, &
+               0.00001612722157047886E0, -0.00025616361025506629E0, &
+               0.00015380842432375365E0,  0.00815533022524927908E0, &
+              -0.01402283663896319337E0, -0.19746892495383021487E0, &
+               0.71511720328842845913E0 /
+           data (B(I), I = 13, 25) /                                &
+              -0.00000000001951073787E0, -0.00000000032302692214E0, &
+               0.00000000522461866919E0,  0.00000000342940918551E0, &
+              -0.00000035772874310272E0,  0.00000019999935792654E0, &
+               0.00002687044575042908E0, -0.00011843240273775776E0, &
+              -0.00080991728956032271E0,  0.00661062970502241174E0, &
+               0.00909530922354827295E0, -0.20160072778491013140E0, &
+               0.51169696718727644908E0 /
+           data (B(I), I = 26, 38) /                                &
+              0.00000000003147682272E0, -0.00000000048465972408E0,  &
+              0.00000000063675740242E0,  0.00000003377623323271E0,  &
+             -0.00000015451139637086E0, -0.00000203340624738438E0,  &
+              0.00001947204525295057E0,  0.00002854147231653228E0,  &
+             -0.00101565063152200272E0,  0.00271187003520095655E0,  &
+              0.02328095035422810727E0, -0.16725021123116877197E0,  &
+              0.32490054966649436974E0 /
+           data (B(I), I = 39, 51) /                                &
+              0.00000000002319363370E0, -0.00000000006303206648E0,  &
+             -0.00000000264888267434E0,  0.00000002050708040581E0,  &
+              0.00000011371857327578E0, -0.00000211211337219663E0,  &
+              0.00000368797328322935E0,  0.00009823686253424796E0,  &
+             -0.00065860243990455368E0, -0.00075285814895230877E0,  &
+              0.02585434424202960464E0, -0.11637092784486193258E0,  &
+              0.18267336775296612024E0 /
+           data (B(I), I = 52, 64) /                                &
+             -0.00000000000367789363E0,  0.00000000020876046746E0,  &
+             -0.00000000193319027226E0, -0.00000000435953392472E0,  &
+              0.00000018006992266137E0, -0.00000078441223763969E0,  &
+             -0.00000675407647949153E0,  0.00008428418334440096E0,  &
+             -0.00017604388937031815E0, -0.00239729611435071610E0,  &
+              0.02064129023876022970E0, -0.06905562880005864105E0,  &
+              0.09084526782065478489E0 /
+           W = ABS(X)
+           if (W .LT. 2.2D0) then
+               T = W * W
+               K = INT(T)
+               T = T - K
+               K = K * 13
+               Y = ((((((((((((A(K) * T + A(K + 1)) * T +              &
+                   A(K + 2)) * T + A(K + 3)) * T + A(K + 4)) * T +     &
+                   A(K + 5)) * T + A(K + 6)) * T + A(K + 7)) * T +     &
+                   A(K + 8)) * T + A(K + 9)) * T + A(K + 10)) * T +    &
+                   A(K + 11)) * T + A(K + 12)) * W
+           elseif (W .LT. 6.9D0) then
+               K = INT(W)
+               T = W - K
+               K = 13 * (K - 2)
+               Y = (((((((((((B(K) * T + B(K + 1)) * T +               &
+                   B(K + 2)) * T + B(K + 3)) * T + B(K + 4)) * T +     &
+                   B(K + 5)) * T + B(K + 6)) * T + B(K + 7)) * T +     &
+                   B(K + 8)) * T + B(K + 9)) * T + B(K + 10)) * T +    &
+                   B(K + 11)) * T + B(K + 12)
+               Y = Y * Y
+               Y = Y * Y
+               Y = Y * Y
+               Y = 1 - Y * Y
+           else
+               Y = 1
+           endif
+           if (X .LT. 0) Y = -Y
+           DERF = Y
+     
+      end function DERF
 
 ! #####################################################################
 !
@@ -9821,6 +9959,24 @@ END SUBROUTINE nssl_2mom_driver
       
       integer :: count
       
+
+!     Addtion T.Iguchi Y2021 Update
+      real, parameter :: mwwater = 0.01801528  ! Molecular weight of water (kg/mol)
+      real, parameter :: rhowater = 997.0  ! Density of liquid water (kg/m3)
+      real, parameter :: gasconst = 8.3144598   ! Gas constant (m2 kg s-2 K-1 mol-1)
+      real :: sswater  ! unit change supersaturation from percentage to n/a
+      real :: sigvl, aact
+
+      real :: alpha_ar, gamma_ar, G_ar, evs, zeta, smax
+      real :: f_ac, g_ac, eta_ac
+      real :: f_nu, g_nu, eta_nu
+      real :: f_co, g_co, eta_co
+
+      real :: sm_nu, sm_ac, sm_co, ss_ac, ss_nu, ss_co
+      real :: uu_nu, uu_ac, uu_co
+      
+      real :: cn_ac, cn_co, cn_nu
+
 ! -------------------------------------------------------------------------------
       itile = nxi
       jtile = ny
@@ -11499,7 +11655,103 @@ END SUBROUTINE nssl_2mom_driver
 
       ELSEIF ( irenuc == 9 .or. irenuc == 10 ) THEN ! } {
 
-         write(0,*) 'irenuc=9 requires nuwrfmods=1'
+
+          temp1 = (theta0(mgs)+thetap(mgs))*pk(mgs) ! t77(ix,jy,kz)
+          ltemq = Int( (temp1-163.15)/fqsat+1.5 )
+          ltemq = Min( nqsat, Max(1,ltemq) )
+          c1= pqs(mgs)*tabqvs(ltemq)
+
+          ssf(mgs) = 0.0
+          IF ( c1 > 0. ) THEN
+            ssf(mgs) = 100.*(qx(mgs,lv)/c1 - 1.0)  ! from "new" values
+          ENDIF
+
+          IF ( ssf(mgs) > 0.0 .or. wvel(mgs) > 0.0 ) THEN
+
+           cpm = cp + cpv*qx(mgs,lv)
+           evs = pres(mgs)*qvs(mgs)/0.622
+           alpha_ar = gr*mwwater*felv(mgs)/(cpm*gasconst*temg(mgs)**2)-gr*Mair/(gasconst*temg(mgs))  ! AR98 eq. 11 (alpha)
+           gamma_ar = gasconst*temg(mgs)/(evs*mwwater) + mwwater*felv(mgs)**2/(cpm*pres(mgs)*Mair*temg(mgs)) ! AR98 eq. 12 (gamma)
+
+           G_ar = 1./(rhowater*gasconst*temg(mgs)/(evs*wvdf(mgs)*mwwater)+ felv(mgs)*rhowater/(tka(mgs)*temg(mgs))*(felv(mgs)*mwwater/ &
+              (temg(mgs)*gasconst)-1.)) ! AR98 eq. 16
+
+!            write(91,*) 'sstmp,ssf,cn1,wvel = ',sstmp,ssf(mgs),cn1,wvel(mgs)
+!            sswater = Min(sstmp, ssf(mgs) * 0.01)  ! unit change from percentage to n/a
+            sswater = ssf(mgs) * 0.01  ! unit change from percentage to n/a
+            sigvl = 0.0761 - 1.55E-4*temcg(mgs)
+            aact  = 2.0*mwwater/(rhowater*gasconst*temg(mgs))*sigvl  ! AR98 eq. 5 (A), where sigvl = tau = surface tension (wrongly defined as time in AR98)
+            ! could add a subgrid TKE-based W-pert to wvel at some point
+            zeta = 2./3.*(alpha_ar*wvel(mgs)/G_ar)**0.5*aact ! wvel is vertical velocity ! ARG2000 eq. 10
+
+              f_ac = 0.5*Exp(2.5*(ac_pgw)**2)     ! ARG2000 eq. 7 (f_i), but size distribution in Cheng et al. uses sigma instead of log(sigma)
+              g_ac = 1.0 + 0.25*ac_pgw           ! ARG2000 eq. 8 (g_i); sig is sigma of the aerosol distribution
+              eta_ac = (alpha_ar*wvel(mgs)/G_ar)**1.5/(2.*pi*rhowater*gamma_ar*ccnc(mgs)) ! na zero ! ARG2000 eq. 11
+
+              sm_ac = 2.0 / ac_kappa**0.5 * (aact / (3.0*ac_pmr) )**1.5    ! AR98 eq. 9 (S_mi)
+              ss_ac = 1./sm_ac**2*(f_ac*(zeta/eta_ac)**1.5 + g_ac*(sm_ac**2/(eta_ac + 3.*zeta))**0.75)  ! ARG2000 eq. 6 (1 term in sum); comes from AR98 eq. 31
+            
+            
+            IF  ( sswater > 0.0 .or. ss_ac > 0.0 )  THEN  ! 
+!              F11 = 0.5*EXP(2.5*(LOG(SIG1))**2) ! ARG2000 eq. 7 (f_i)
+!              F21 = 1.+0.25*LOG(SIG1)           ! ARG2000 eq. 8 (g_i); sig is sigma of the aerosol distribution
+!              ETA1 = (ALPHA*DUM/GG)**1.5/(2.*PI*RHOW*GAMM*NANEW1) ! na zero ! ARG2000 eq. 11
+!     sm_ac ->    SM1  = 2./BACT1**0.5*(AACT/(3.*RM1))**1.5  ! AR98 eq. 8 (or 7?) and ARG2000 eq. 9 for particle critical supersaturation
+!              DUM1 = 1./SM1**2*(F11*(PSI/ETA1)**1.5+F21*(SM1**2/(ETA1+3.*PSI))**0.75)  ! ARG2000 eq. 6 (1 term in sum); comes from AR98 eq. 31
+!             SMAX = 1./(DUM1 + ... )**0.5
+!      uu_ac ->      UU1 = 2.*LOG(SM1/SMAX)/(4.242*LOG(SIG1))
+!    NANEW1  ! TOTAL AEROSOL CONCENTRATION, MODE 1 (M^-3)
+!             DUM1 = NANEW1/2.*(1.-DERF1(UU1))
+!  BACT -> kappa
+!  RM1 -> pmr
+
+!-              sm_ac = 2.0 / ac_kappa**0.5 * (aact / (3.0*ac_pmr) )**1.5
+              
+              IF ( ss_ac > 0.0 ) THEN
+               IF ( .true. ) THEN
+                 smax = 1./sqrt(ss_ac)
+                 uu_ac = 2.0 * log(sm_ac / smax) / (3.0 * 2**0.5 * ac_pgw )  ! AR98 eq. 15 (u_i)
+               ELSE
+                 uu_ac = 2.0 * log(sm_ac / sswater) / (3.0 * 2**0.5 * ac_pgw)
+               ENDIF
+!              cn(mgs) = Max( cn1, ccnc_ac(mgs) * 0.5 * (1.0 - Derf(uu_ac))  ) ! number concentration
+              cn(mgs) = Max( 0.0, ccnc(mgs) * 0.5 * (1.0 - Derf(uu_ac))  ) ! number concentration of newly-activated droplets
+              
+              ENDIF
+!              IF ( sswater > 0.0 ) &
+!              write(91,*) 'cn,c_ac,cn-cx,uuac,sswater = ',cn(mgs),ccnc_ac(mgs),cn(mgs)- cx(mgs,lc),uu_ac,sswater
+!              IF ( irenuc == 10 ) THEN
+                cn(mgs) = Min( cn(mgs) - ccna(mgs), ccnc(mgs) - ccna(mgs) )
+!              ENDIF
+             ENDIF
+            ELSE
+              cn(mgs) = 0.0
+            ENDIF
+
+       IF ( cn(mgs)  > 0.0 ) THEN
+
+           CN(mgs) = Min( CN(mgs), Max(0.0, (cnuc(mgs) - ccna(mgs) )) )
+
+         dcrit = 2.0*2.0e-6
+         dcloud = 1000.*dcrit**3*Pi/6.
+       ! check new droplet size:
+         tmp = Max(0.0,  rho0(mgs)*qx(mgs,lc)/dcloud - cx(mgs,lc)) ! (cx(mgs,lc) + cn(mgs))
+         ! tmp is number of droplets at diameter dcrit. If cn is too large and makes avg droplet diam too small, then replace with tmp
+          cn(mgs) = Min(tmp, cn(mgs) )
+
+          cx(mgs,lc) = cx(mgs,lc) + cn(mgs)
+ 
+ 
+       ! create some small droplets at minimum size (CP 2000), although it adds very little liquid
+       
+       
+         dcrit = 2.0*2.5e-7
+         dcloud = 1000.*dcrit**3*Pi/6.*(cn(mgs) )
+         qx(mgs,lc) = qx(mgs,lc) + DCLOUD
+         thetap(mgs) = thetap(mgs) + felvcp(mgs)*DCLOUD/(pi0(mgs))
+         qwvp(mgs) = qwvp(mgs) - DCLOUD
+       ENDIF
+
       ENDIF ! }
       
 
