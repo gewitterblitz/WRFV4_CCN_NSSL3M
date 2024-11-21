@@ -1008,8 +1008,8 @@ MODULE module_mp_nssl_2mom
       real, parameter :: nu_pmr = 7.5 * 1.e-3 * 1.e-6  ! aerosol radius (meter); these parameter values follow Cheng et al. (2007QJ)
       real, parameter :: nu_pgw = 0.53  ! Unlike original Abdul-Razzak_and_Ghan, this value is used without log (Cheng et al. 2007QJ)
       real :: nu_kappa = 0.61  ! ammonium sulfate as CCN (Petters and Kreidenweis, 2007ACP)
-      real, parameter :: ac_pmr = 3.8 * 1.e-2 * 1.e-6  ! aerosol radius (meter)
-      real, parameter :: ac_pgw = 0.69
+      real :: ac_pmr = 3.8 * 1.e-2 * 1.e-6  ! aerosol radius (meter)
+      real :: ac_pgw = 0.69
       real :: ac_kappa = 0.61  ! ammonium sulfate as CCN (Petters and Kreidenweis, 2007ACP)
       real, parameter :: co_pmr = 0.51 * 1.e-6  ! aerosol radius (meter)
       real, parameter :: co_pgw = 0.77
@@ -1042,6 +1042,7 @@ MODULE module_mp_nssl_2mom
                         idiagnosecnu,   &
                         icnuclimit,     &
                         irenuc,         &
+                        ac_pmr,ac_pgw,ac_kappa,   &
                         restoreccn, ccntimeconst, cck, &
                         decayufccn, ufccntimeconst, &
                         switchccn, old_cccn,  &
