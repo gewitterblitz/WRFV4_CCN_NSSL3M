@@ -10243,7 +10243,11 @@ END SUBROUTINE nssl_2mom_driver
           IF ( lccnuf .gt. 1 .and. i_uf_or_ccn > 0 ) THEN
              ccnc(mgs) = an(igs(mgs),jy,kgs(mgs),lccn) + an(igs(mgs),jy,kgs(mgs),lccnuf)
           ELSE
-             ccnc(mgs) = an(igs(mgs),jy,kgs(mgs),lccn)
+             IF ( lccna > 1) THEN
+                ccnc(mgs) = an(igs(mgs),jy,kgs(mgs),lccn)
+                cwnccn(mgs) = ccnc(mgs)! + ccna(mgs)
+             ENDIF
+             
           ENDIF
         ELSE
           ccnc(mgs) = cwnccn(mgs)
@@ -10287,9 +10291,11 @@ END SUBROUTINE nssl_2mom_driver
        DO mgs = 1,ngscnt
        ! default value of renucfrac is 0.0
         IF ( irenuc /= 6 ) THEN
-        cnuc(mgs) = Max(ccnc(mgs),cwnccn(mgs))*(1. - renucfrac) + ccnc(mgs)*renucfrac
+        !cnuc(mgs) = Max(ccnc(mgs),cwnccn(mgs))*(1. - renucfrac) + ccnc(mgs)*renucfrac
+        cnuc(mgs) = ccnc(mgs)*(1. - renucfrac) + ccnc(mgs)*renucfrac
         ELSE
-        cnuc(mgs) = Max(ccnc(mgs),cwnccn(mgs))*(1. - renucfrac) + Max(0.0,ccnc(mgs) - ccna(mgs))*renucfrac
+        !cnuc(mgs) = Max(ccnc(mgs),cwnccn(mgs))*(1. - renucfrac) + Max(0.0,ccnc(mgs) - ccna(mgs))*renucfrac
+        cnuc(mgs) = ccnc(mgs)*(1. - renucfrac) + Max(0.0,ccnc(mgs) - ccna(mgs))*renucfrac
         ENDIF
         IF ( renucfrac >= 0.999 ) THEN
           IF ( temg(mgs) < 265. ) THEN
@@ -11689,7 +11695,7 @@ END SUBROUTINE nssl_2mom_driver
             ssf(mgs) = 100.*(qx(mgs,lv)/c1 - 1.0)  ! from "new" values
           ENDIF
 
-          IF ( ssf(mgs) > 0.0 .or. wvel(mgs) > 0.0 ) THEN
+          IF ( ssf(mgs) > 0.0 .and. wvel(mgs) > 0.0 ) THEN
 
            cpm = cp + cpv*qx(mgs,lv)
            evs = pres(mgs)*qvs(mgs)/0.622
@@ -11705,15 +11711,22 @@ END SUBROUTINE nssl_2mom_driver
             sigvl = 0.0761 - 1.55E-4*temcg(mgs)
             aact  = 2.0*mwwater/(rhowater*gasconst*temg(mgs))*sigvl  ! AR98 eq. 5 (A), where sigvl = tau = surface tension (wrongly defined as time in AR98)
             ! could add a subgrid TKE-based W-pert to wvel at some point
+            
+            print *, "Debugging nucond: alpha_ar=", alpha_ar, "gamma_ar=", gamma_ar, &
+            "G_ar=", G_ar, "aact =", aact, "wvel(mgs) =", wvel(mgs)
+
             zeta = 2./3.*(alpha_ar*wvel(mgs)/G_ar)**0.5*aact ! wvel is vertical velocity ! ARG2000 eq. 10
 
-              f_ac = 0.5*Exp(2.5*(ac_pgw)**2)     ! ARG2000 eq. 7 (f_i), but size distribution in Cheng et al. uses sigma instead of log(sigma)
-              g_ac = 1.0 + 0.25*ac_pgw           ! ARG2000 eq. 8 (g_i); sig is sigma of the aerosol distribution
+              f_ac = 0.5*Exp(2.5*(log(ac_pgw))**2)     ! ARG2000 eq. 7 (f_i), but size distribution in Cheng et al. uses sigma instead of log(sigma)
+              g_ac = 1.0 + 0.25* log(ac_pgw)           ! ARG2000 eq. 8 (g_i); sig is sigma of the aerosol distribution
               eta_ac = (alpha_ar*wvel(mgs)/G_ar)**1.5/(2.*pi*rhowater*gamma_ar*ccnc(mgs)) ! na zero ! ARG2000 eq. 11
 
               sm_ac = 2.0 / ac_kappa**0.5 * (aact / (3.0*ac_pmr) )**1.5    ! AR98 eq. 9 (S_mi)
               ss_ac = 1./sm_ac**2*(f_ac*(zeta/eta_ac)**1.5 + g_ac*(sm_ac**2/(eta_ac + 3.*zeta))**0.75)  ! ARG2000 eq. 6 (1 term in sum); comes from AR98 eq. 31
-            
+           
+            print *, "Debugging nucond: alpha_ar=", alpha_ar, "gamma_ar=", gamma_ar, &
+            "G_ar=", G_ar, "zeta=", zeta, "f_ac=", f_ac, "eta_ac=", eta_ac, &
+            "sm_ac=", sm_ac, "ss_ac=", ss_ac, "aact =", aact, "wvel(mgs) =", wvel(mgs)
             
             IF  ( sswater > 0.0 .or. ss_ac > 0.0 )  THEN  ! 
 !              F11 = 0.5*EXP(2.5*(LOG(SIG1))**2) ! ARG2000 eq. 7 (f_i)
@@ -11731,12 +11744,13 @@ END SUBROUTINE nssl_2mom_driver
 !-              sm_ac = 2.0 / ac_kappa**0.5 * (aact / (3.0*ac_pmr) )**1.5
               
               IF ( ss_ac > 0.0 ) THEN
-               IF ( .true. ) THEN
-                 smax = 1./sqrt(ss_ac)
-                 uu_ac = 2.0 * log(sm_ac / smax) / (3.0 * 2**0.5 * ac_pgw )  ! AR98 eq. 15 (u_i)
-               ELSE
-                 uu_ac = 2.0 * log(sm_ac / sswater) / (3.0 * 2**0.5 * ac_pgw)
-               ENDIF
+                 IF ( .true. ) THEN
+                    smax = Max(1./sqrt(ss_ac),sswater)
+                    uu_ac = 2.0 * log(sm_ac / smax) / (3.0 * 2**0.5 * log(ac_pgw) )  ! AR98 eq. 15 (u_i)
+                    print *, "Derf(uu_ac)=", Derf(uu_ac) 
+                 ELSE
+                    uu_ac = 2.0 * log(sm_ac / sswater) / (3.0 * 2**0.5 * log(ac_pgw))
+                 ENDIF
 !              cn(mgs) = Max( cn1, ccnc_ac(mgs) * 0.5 * (1.0 - Derf(uu_ac))  ) ! number concentration
               cn(mgs) = Max( 0.0, ccnc(mgs) * 0.5 * (1.0 - Derf(uu_ac))  ) ! number concentration of newly-activated droplets
               
@@ -11744,12 +11758,13 @@ END SUBROUTINE nssl_2mom_driver
 !              IF ( sswater > 0.0 ) &
 !              write(91,*) 'cn,c_ac,cn-cx,uuac,sswater = ',cn(mgs),ccnc_ac(mgs),cn(mgs)- cx(mgs,lc),uu_ac,sswater
 !              IF ( irenuc == 10 ) THEN
-                cn(mgs) = Min( cn(mgs) - ccna(mgs), ccnc(mgs) - ccna(mgs) )
+!                cn(mgs) = Min( cn(mgs) - ccna(mgs), ccnc(mgs) - ccna(mgs) )
+                cn(mgs) = Max(0.0, cn(mgs) - ccna(mgs))
 !              ENDIF
-             ENDIF
-            ELSE
-              cn(mgs) = 0.0
             ENDIF
+         ELSE
+           cn(mgs) = 0.0
+         ENDIF
 
        IF ( cn(mgs)  > 0.0 ) THEN
 

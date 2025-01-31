@@ -1464,8 +1464,8 @@ MODULE module_initialize_ideal
 !  Alternatively one can set CCN values as a function of k
 !   Values should be set as number per kilogram
           
-           scalar(i,k,j,P_QNN) = MAX(20.,  (FACTZ(i,k,j) * 1.0D6)/1.225 ) 
-           !scalar(i,k,j,P_QNN) = (FACTZ(i,k,j) * 1.0D6)/1.225
+           !scalar(i,k,j,P_QNN) = MAX(20.,  (FACTZ(i,k,j) * 1.0D6)/1.225 ) 
+           scalar(i,k,j,P_QNN) = MAX(20., FACTZ(i,k,j) * 1.0D6)
            !IF ( k < 7 ) THEN
            !scalar(i,k,j,P_QNN) = grid%nssl_cccn/1.225
            !ELSE

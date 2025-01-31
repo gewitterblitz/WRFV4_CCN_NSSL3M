@@ -593,8 +593,10 @@ MODULE module_llxy
       REAL, INTENT(OUT)                    :: j
   
       IF (.NOT.proj%init) THEN
+         i = lon
+         j = lat
          PRINT '(A)', 'You have not called map_set for this projection'
-         CALL wrf_error_fatal ( 'LATLON_TO_IJ' )
+         !CALL wrf_error_fatal ( 'LATLON_TO_IJ' )
       ENDIF
   
       SELECT CASE(proj%code)
@@ -630,8 +632,10 @@ MODULE module_llxy
             CALL llij_rotlatlon(lat,lon,proj,i,j)
    
          CASE DEFAULT
+            i = lon
+            j = lat
             PRINT '(A,I2)', 'Unrecognized map projection code: ', proj%code
-            CALL wrf_error_fatal ( 'LATLON_TO_IJ' )
+            !CALL wrf_error_fatal ( 'LATLON_TO_IJ' )
     
       END SELECT
 
