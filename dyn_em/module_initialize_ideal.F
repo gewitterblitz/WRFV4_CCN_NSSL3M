@@ -2208,22 +2208,66 @@ MODULE module_initialize_ideal
 
   tracers: SELECT CASE ( config_flags%tracer_opt )
   CASE (tracer_test1)
-
+  
   DO J = jts, min(jde-1,jte)
+  !DO J = (jde + jds)/2 -4, (jde + jds)/2 + 4, 1
   DO K = kts, kte-1
+  !DO I = (ide + ids)/2 - 4, (ide + ids)/2 + 4, 1
+
   DO I = its, min(ide-1,ite)
-    grid%h_diabatic(i,k,j) = 0.
-    if(k.eq.kts)tracer(i,k,j,p_tr17_1)=1.
-    if(k.eq.kts.and.grid%xland(i,j).lt.1.5)tracer(i,k,j,p_tr17_2)=1.
-    if(k.eq.kts.and.grid%xland(i,j).gt.1.5)tracer(i,k,j,p_tr17_3)=1.
-    if(k.le.5)tracer(i,k,j,p_tr17_4)=1.
-    if(k.le.5.and.grid%xland(i,j).lt.1.5)tracer(i,k,j,p_tr17_5)=1.
-    if(k.le.5.and.grid%xland(i,j).gt.1.5)tracer(i,k,j,p_tr17_6)=1.
-    if(k.le.10)tracer(i,k,j,p_tr17_7)=1.
-    if(k.le.10.and.k.gt.5)tracer(i,k,j,p_tr17_8)=1.
+    IF ( its .LE. i .and. ite .GE. i .and. jts .LE. j .and. jte .GE. j ) THEN
+    !grid%h_diabatic(i,k,j) = 0.
+    !if(k.eq.kts)tracer(i,k,j,p_tr17_1)=1.
+    !if(k.eq.kts.and.grid%xland(i,j).lt.1.5)tracer(i,k,j,p_tr17_2)=1.
+    !if(k.eq.kts.and.grid%xland(i,j).gt.1.5)tracer(i,k,j,p_tr17_3)=1.
+    !if(k.le.5)tracer(i,k,j,p_tr17_4)=1.
+    !if(k.le.5.and.grid%xland(i,j).lt.1.5)tracer(i,k,j,p_tr17_5)=1.
+    !if(k.le.5.and.grid%xland(i,j).gt.1.5)tracer(i,k,j,p_tr17_6)=1.
+    !if(k.le.10)tracer(i,k,j,p_tr17_7)=1.
+    !if(k.le.10.and.k.gt.5)tracer(i,k,j,p_tr17_8)=1.
+    if(k .le. 5)tracer(i, k, j, P_MSplm_1) = 1.
+    if(k .gt. 5 .and. k .le. 9)tracer(i, k, j, P_MSplm_2) = 1.
+    if(k .gt. 9 .and. k .le. 13)tracer(i, k, j, P_MSplm_3) = 1.
+    if(k .gt. 13 .and. k .le. 18)tracer(i, k, j, P_MSplm_4) = 1.
+    if(k .gt. 18 .and. k .le. 22)tracer(i, k, j, P_MSplm_5) = 1.
+    if(k .gt. 22 .and. k .le. 26)tracer(i, k, j, P_MSplm_6) = 1.
+    if(k .gt. 26 .and. k .le. 31)tracer(i, k, j, P_MSplm_7) = 1.
+    if(k .gt. 31 .and. k .le. 35)tracer(i, k, j, P_MSplm_8) = 1.
+    if(k .gt. 35 .and. k .le. 40)tracer(i, k, j, P_MSplm_9) = 1.
+    if(k .gt. 40 .and. k .le. 44)tracer(i, k, j, P_MSplm_10) = 1.
+    if(k .gt. 44 .and. k .le. 49)tracer(i, k, j, P_MSplm_11) = 1.
+    if(k .gt. 49 .and. k .le. 54)tracer(i, k, j, P_MSplm_12) = 1.
+    if(k .gt. 54 .and. k .le. 59)tracer(i, k, j, P_MSplm_13) = 1.
+    if(k .gt. 59 .and. k .le. 64)tracer(i, k, j, P_MSplm_14) = 1.
+    if(k .gt. 64 .and. k .le. 69)tracer(i, k, j, P_MSplm_15) = 1.
+    if(k .gt. 69 .and. k .le. 74)tracer(i, k, j, P_MSplm_16) = 1.
+    if(k .gt. 74 .and. k .le. 79)tracer(i, k, j, P_MSplm_17) = 1.
+    if(k .gt. 79 .and. k .le. 84)tracer(i, k, j, P_MSplm_18) = 1.
+    if(k .gt. 84 .and. k .le. 88)tracer(i, k, j, P_MSplm_19) = 1.
+    if(k .gt. 88 .and. k .le. 92)tracer(i, k, j, P_MSplm_20) = 1.
+    if(k .gt. 92 .and. k .le. 96)tracer(i, k, j, P_MSplm_21) = 1.
+    if(k .gt. 96 .and. k .le. 100)tracer(i, k, j, P_MSplm_22) = 1.
+  ENDIF
   ENDDO
   ENDDO
   ENDDO
+
+
+  !DO J = jts, min(jde-1,jte)
+  !DO K = kts, kte-1
+  !DO I = its, min(ide-1,ite)
+  !  grid%h_diabatic(i,k,j) = 0.
+  !  if(k.eq.kts)tracer(i,k,j,p_tr17_1)=1.
+  !  if(k.eq.kts.and.grid%xland(i,j).lt.1.5)tracer(i,k,j,p_tr17_2)=1.
+  !  if(k.eq.kts.and.grid%xland(i,j).gt.1.5)tracer(i,k,j,p_tr17_3)=1.
+  !  if(k.le.5)tracer(i,k,j,p_tr17_4)=1.
+  !  if(k.le.5.and.grid%xland(i,j).lt.1.5)tracer(i,k,j,p_tr17_5)=1.
+  !  if(k.le.5.and.grid%xland(i,j).gt.1.5)tracer(i,k,j,p_tr17_6)=1.
+  !  if(k.le.10)tracer(i,k,j,p_tr17_7)=1.
+  !  if(k.le.10.and.k.gt.5)tracer(i,k,j,p_tr17_8)=1.
+  !ENDDO
+  !ENDDO
+  !ENDDO
 
   END SELECT tracers
 

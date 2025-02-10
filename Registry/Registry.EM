@@ -35,11 +35,35 @@ state   real    tr17_7     ikjftb  tracer        1         -     irhusdf=(bdy_in
 state   real    tr17_8     ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "tr17_8"         "tr17_8"     "Dimensionless"
 
 # MAD-WRF
+state   real    MSplm_1   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_1"          "MSplm_1"         "Dimensionless"
+state   real    MSplm_2   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_2"          "MSplm_2"         "Dimensionless"
+state   real    MSplm_3   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_3"          "MSplm_3"         "Dimensionless"
+state   real    MSplm_4   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_4"          "MSplm_4"         "Dimensionless"
+state   real    MSplm_5   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_5"          "MSplm_5"         "Dimensionless"
+state   real    MSplm_6   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_6"          "MSplm_6"         "Dimensionless"
+state   real    MSplm_7   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_7"          "MSplm_7"         "Dimensionless"
+state   real    MSplm_8   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_8"          "MSplm_8"         "Dimensionless"
+state   real    MSplm_9   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_9"          "MSplm_9"         "Dimensionless"
+state   real    MSplm_10   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_10"          "MSplm_10"         "Dimensionless"
+state   real    MSplm_11   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_11"          "MSplm_11"         "Dimensionless"
+state   real    MSplm_12   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_12"          "MSplm_12"         "Dimensionless"
+state   real    MSplm_13   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_13"          "MSplm_13"         "Dimensionless"
+state   real    MSplm_14   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_14"          "MSplm_14"         "Dimensionless"
+state   real    MSplm_15   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_15"          "MSplm_15"         "Dimensionless"
+state   real    MSplm_16   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_16"          "MSplm_16"         "Dimensionless"
+state   real    MSplm_17   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_17"          "MSplm_17"         "Dimensionless"
+state   real    MSplm_18   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_18"          "MSplm_18"         "Dimensionless"
+state   real    MSplm_19   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_19"          "MSplm_19"         "Dimensionless"
+state   real    MSplm_20   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_20"          "MSplm_20"         "Dimensionless"
+state   real    MSplm_21   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_21"          "MSplm_21"         "Dimensionless"
+state   real    MSplm_22   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "MSplm_22"          "MSplm_22"         "Dimensionless"
+
+
 state   real    tr_qc   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "tr_qcloud"      "Tracer with the liquid content" "Kg Kg-1"
 state   real    tr_qi   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "tr_qice"        "Tracer with the ice content" "Kg Kg-1"
 state   real    tr_qs   ikjftb  tracer        1         -     irhusdf=(bdy_interp:dt)    "tr_qsnow"       "Tracer with the snow content" "Kg Kg-1"
 
-package   tracer_test1  tracer_opt==2       -             tracer:tr17_1,tr17_2,tr17_3,tr17_4,tr17_5,tr17_6,tr17_7,tr17_8
+package   tracer_test1  tracer_opt==2       -             tracer:tr17_1,tr17_2,tr17_3,tr17_4,tr17_5,tr17_6,tr17_7,tr17_8,MSplm_1,MSplm_2,MSplm_3,MSplm_4,MSplm_5,MSplm_6,MSplm_7,MSplm_8,MSplm_9,MSplm_10,MSplm_11,MSplm_12,MSplm_13,MSplm_14,MSplm_15,MSplm_16,MSplm_17,MSplm_18,MSplm_19,MSplm_20,MSplm_21,MSplm_22
 
 package   restofwrf      use_wps_input==0            -             -
  
