@@ -2447,7 +2447,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
 
       real, dimension(ims:ime, kms:kme, jms:jme), intent(in)::  pii
       real, dimension(ims:ime, kms:kme, jms:jme), optional, intent(inout)::   &
-                              pcc2, pre2, depsubr,      &
+                              pcc2,pcr2,per2,pisub2,pfrz2,pmlt2,prim2,supersat, &
                               mnucf2, melr2, ctr2,     &
                               rim1_2, rim2_2,rim3_2, &
                               nctr2, nnuccd2, nnucf2, &
