@@ -31,6 +31,10 @@ MODULE module_initialize_ideal
 
   private rndnum
 
+  ! Kind paramater
+  INTEGER, PARAMETER, PRIVATE:: R8SIZE = 8
+  INTEGER, PARAMETER, PRIVATE:: R4SIZE = 4
+
   real, private :: ugrid = 0.0        ! east-west grid motion (subtracted from U wind component)
   real, private :: vgrid = 0.0        ! north-south grid motion (subtracted from V wind component)
   logical :: use_snd_plevels = .false. ! whether to read in pressure from the sounding file and use the same levels
@@ -95,6 +99,10 @@ MODULE module_initialize_ideal
                                   its, ite, jts, jte, kts, kte, &
                                   i, j, k, kk, n
 
+   INTEGER :: i_start, i_end, j_start, j_end, k_start, k_end
+   REAL, ALLOCATABLE,  DIMENSION(:, :, :) :: dz8w
+   REAL (KIND=R4SIZE) :: z_full
+
    ! Local data
 
    INTEGER, PARAMETER :: nl_max = 1000
@@ -106,6 +114,10 @@ MODULE module_initialize_ideal
 
    INTEGER :: icm,jcm, ii, im1, jj, jm1, loop, error, fid
    REAL    :: u_mean,v_mean, f0, p_surf, p_level, qvf, z_at_v, z_at_u
+   REAL, ALLOCATABLE,DIMENSION(: , :, : ) :: z_at_w
+   REAL (KIND=R4SIZE), ALLOCATABLE, DIMENSION(:, :, :):: zcgs
+   REAL , ALLOCATABLE, DIMENSION(:,:,:)   :: FACTZ
+
    REAL    :: z_scale, xrad, yrad, zrad, rad, cof1, cof2
 !   REAL, EXTERNAL :: interp_0
    REAL    :: hm, xa
@@ -247,10 +259,24 @@ MODULE module_initialize_ideal
 
    END SELECT
 
-  open(15,file="namelist.input",status='old',form='formatted')
-  rewind(15)
-  read(15,NML=init_ideal,iostat=istat) ! returning iostat prevents bombing if the namelist does not exist
-  close(15)
+   i_start = its
+   i_end   = min( ite,ide-1 )
+   j_start = jts
+   j_end   = min( jte,jde-1 )
+
+   k_start = kts
+   k_end = min( kte, kde-1 )  
+
+   ! Allocate the arrays with the given dimensions
+   ALLOCATE(z_at_w(ITS:ITE, KTS:KTE, JTS:JTE))  
+   ALLOCATE(dz8w(ims:ime,kms:kme,jms:jme))
+   ALLOCATE(zcgs(its-1:ite+1,kts:kte,jts-1:jte+1))
+   ALLOCATE(FACTZ(its:ite,kts:kte,jts:jte))
+
+   open(15,file="namelist.input",status='old',form='formatted')
+   rewind(15)
+   read(15,NML=init_ideal,iostat=istat) ! returning iostat prevents bombing if the namelist does not exist
+   close(15)
 
    CALL model_to_grid_config_rec ( grid%id , model_config_rec , config_flags )
 
@@ -1337,6 +1363,54 @@ MODULE module_initialize_ideal
     ENDDO
   ENDDO
   ENDDO
+
+  !  compute z at w points
+
+    do j = j_start,j_end
+    do k = k_start, kte
+    do i = i_start, i_end
+      z_at_w(i,k,j) = (grid%phb(i,k,j)+ grid%ph_1(i,k,j))/g
+    enddo
+    enddo
+    enddo
+
+    do j = j_start,j_end
+    do k = k_start, kte-1
+    do i = i_start, i_end
+      dz8w(i,k,j) = z_at_w(i,k+1,j)-z_at_w(i,k,j)
+    enddo
+    enddo
+    enddo
+
+    do j = j_start,j_end
+    do i = i_start, i_end
+      dz8w(i,kte,j) = 0. 
+    enddo
+    enddo
+
+!  compute z at p points or half levels (average of z at full levels)
+
+    !do j = j_start,j_end
+    !do k = k_start, k_end
+    !do i = i_start, i_end
+      !zcgs(i,k,j) = 0.5*(z_at_w(i,k,j) +z_at_w(i,k+1,j) )*100
+    !enddo
+    !enddo
+    !enddo
+
+  DO j = j_start,j_end
+      DO i = i_start,i_end
+         z_full=0.
+         DO k = kts,kte
+            !pcgs(I,K,J)=P_PHY(I,K,J)*10.
+            !rhocgs(I,K,J)=rho_phy(I,K,J)*0.001
+            zcgs(I,K,J)=z_full+0.5*dz8w(I,K,J)*100
+            !height(i,k,j) = 1.0e-2*zcgs(i,k,j) ! in [m]
+            z_full=z_full+dz8w(i,k,j)*100.
+         ENDDO
+      ENDDO
+   ENDDO
+
   IF ( wrf_dm_on_monitor() ) THEN
   write(6,*) ' ptop is ',grid%p_top
   write(6,*) ' base state grid%MUB(1,1), p_surf is ',grid%MUB(1,1),grid%c3f(kts)*grid%MUB(1,1)+grid%c4f(kts)+grid%p_top
@@ -1383,7 +1457,8 @@ MODULE module_initialize_ideal
 !       ELSEIF ( config_flags%mp_physics == nssl_2momccn .or. config_flags%mp_physics == nssl_3mom ) THEN
          IF ( config_flags%nssl_ccn_is_ccna == 0 .or. config_flags%nssl_ccn_on >= 2 ) THEN ! qnn field is for UNactivated CCN
           ! The value of 1.225 converts number per m^3 to number per kg at sea level pressure in a perfectly mixed atmosphere
-           scalar(i,k,j,P_QNN) = grid%nssl_cccn/1.225
+           !scalar(i,k,j,P_QNN) = grid%nssl_cccn/1.225
+           scalar(i,k,j,P_QNN) = MAX(20.,  (FACTZ(i,k,j) * 1.0D6)/1.225 )
            IF ( P_QNN_NU > 1 ) THEN
               scalar(i,k,j,P_QNN_NU) = grid%nssl_cccnnu/1.225
            ENDIF
@@ -2186,6 +2261,106 @@ MODULE module_initialize_ideal
 
    SUBROUTINE init_module_initialize
    END SUBROUTINE init_module_initialize
+
+ SUBROUTINE read_aerosol(zcgs,FACTZ,its,ite,jts,jte,kts,kte, &
+                           i_start,i_end,j_start,j_end)
+        implicit none
+
+        type :: mission_type
+                real  :: altitude
+                real  :: dab_lr80
+                real  :: dab_lr30
+                real  :: ac_lr80
+                real  :: ac_lr30
+                real  :: ac_avg
+                real  :: ratio
+        end type mission_type
+
+        type(mission_type), allocatable :: missions(:)
+        integer            :: file_unit
+        integer            :: rc,l,nlines,target_index
+        real ::  min_diff, diff
+        INTEGER, INTENT(IN) :: its,ite,jts,jte,kts,kte
+        INTEGER :: i_start,i_end,j_start,j_end
+        !INTEGER, INTENT(IN) :: ims,ime,jms,jme,kms,kme
+        !REAL (KIND=R4SIZE),  DIMENSION(its-1:ite+1, kts:kte, jts-1:jte+1)::
+        !zcgs
+        REAL , INTENT(IN) :: zcgs(its-1:ite+1, kts:kte, jts-1:jte+1)
+        REAL, INTENT(INOUT) :: FACTZ(its:ite,kts:kte,jts:jte)
+        INTEGER :: i,j,k
+
+        nlines = 0
+        OPEN (1, file = 'aerosol_data.csv')
+        DO
+                READ (1,*, END=10)
+                nlines = nlines + 1
+        END DO
+        10 CLOSE (1)
+
+        !print*, 'Number of lines = ', nlines
+
+        allocate(missions(nlines))
+
+        open (action='read', file='aerosol_data.csv',
+iostat=rc,newunit=file_unit)
+
+        if (rc /= 0) stop
+
+        do i = 1, nlines
+                read (file_unit, *, iostat=rc) missions(i)
+                if (rc /= 0) exit
+        end do
+
+        close (file_unit)
+
+        do j = jts,jte
+                do k = kts,kte
+                        do i = its,ite
+                                min_diff = abs(missions(1)%altitude -
+zcgs(i,k,j)*1.0E-5)
+                                target_index = 1
+
+                                do l = 2, nlines
+                                        diff = abs(missions(l)%altitude -
+zcgs(i,k,j)*1.0E-5)
+                                                if (diff < min_diff) then
+                                                        min_diff = diff
+                                                        target_index = l
+                                                end if
+                                end do
+
+                                if (zcgs(i,k,j)*1.0E-5 .gt.
+MAXVAL(missions%altitude)) then
+                                        FACTZ(i,k,j) = 0.
+                                else if (zcgs(i,k,j)*1.0E-5 .lt.
+MINVAL(missions%altitude)) then
+                                        FACTZ(i,k,j) = missions(1)%ratio
+                                else
+                                        FACTZ(i,k,j) =
+missions(target_index)%ratio
+                                end if
+
+                                !print *, 'target altitude is
+                                !=',missions(target_index)%altitude
+                                print *, 'FACTZ(i,k,j) is', FACTZ(i,k,j)
+                                !print *, 'zcgs(i,k,j) is =',zcgs(i,k,j)
+                                !print *, 'i,j,k are', i,j,k
+                                !print *,  'zcgs(i,j,k)*1E-5 is
+                                !=',zcgs(i,k,j)*1.0E-5
+                                !print *, 'scalar(i,k,j,P_QNN) = ',
+                                !scalar(i,k,j,P_QNN)
+                                !scalar(i,k,j,P_QNN)(i,k,j) =
+                                !missions(target_index)%ratio
+                        end do
+                end do
+        end do
+
+        !print*, "Index of closest altitude to ", target_altitude, " is ",
+        !target_index
+
+        deallocate(missions)
+
+   END SUBROUTINE read_aerosol
 
 !---------------------------------------------------------------------
 
