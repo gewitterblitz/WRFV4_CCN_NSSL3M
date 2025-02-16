@@ -115,6 +115,7 @@ SUBROUTINE microphysics_driver(                                          &
                       ,qnwfa2d, qnifa2d, qnbca2d                         & ! for water/ice-friendly/black carbon aerosols
                       ,qnocbb2d, qnbcbb2d                                & ! for biomass burning aerosols
                       ,refl_10cm                                         & ! HM, 9/22/09, add for refl
+                      ,pcc2,pcr2,per2,pisub2,pfrz2,pmlt2,prim2,supersat  & ! MS, 2/15/25, add for microphysical rate output
                       ,vmi3d                                             & ! for P3 
                       ,di3d                                              & ! for P3 
                       ,rhopo3d                                           & ! for P3 
@@ -689,6 +690,9 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                                                           ,HAILNC &
                                                          ,HAILNCV &
                                           ,hail_maxk1, hail_max2d
+
+   REAL, DIMENSION(ims:ime, kms:kme, jms:jme), OPTIONAL, INTENT(INOUT)::   &
+                              pcc2,pcr2,per2,pisub2,pfrz2,pmlt2,prim2,supersat 
                                                           
 #if ( WRF_CHEM == 1)
 ! NUWRF JJS 20110525 vvvvv
@@ -1998,6 +2002,14 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      GRPLNCV  = GRAUPELNCV,              &
                      SR=SR,                              &
                      dbz      = refl_10cm,               &
+                     pcc2     = pcc2,                    &
+                     pcr2     = pcr2,                    &
+                     per2     = per2,                    &
+                     pisub2   = pisub2,                  &
+                     pfrz2    = pfrz2,                   &
+                     pmlt2    = pmlt2,                   &
+                     prim2    = prim2,                   &
+                     supersat = supersat,                &
 #if ( WRF_CHEM == 1 )
                     WETSCAV_ON = config_flags%wetscav_onoff == 1, &
                     EVAPPROD=evapprod,RAINPROD=rainprod, &
