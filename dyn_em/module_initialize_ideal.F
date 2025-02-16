@@ -2301,8 +2301,7 @@ MODULE module_initialize_ideal
 
         allocate(missions(nlines))
 
-        open (action='read', file='aerosol_data.csv',
-iostat=rc,newunit=file_unit)
+        open (action='read', file='aerosol_data.csv', iostat=rc,newunit=file_unit)
 
         if (rc /= 0) stop
 
@@ -2316,28 +2315,23 @@ iostat=rc,newunit=file_unit)
         do j = jts,jte
                 do k = kts,kte
                         do i = its,ite
-                                min_diff = abs(missions(1)%altitude -
-zcgs(i,k,j)*1.0E-5)
+                                min_diff = abs(missions(1)%altitude - zcgs(i,k,j)*1.0E-5)
                                 target_index = 1
 
                                 do l = 2, nlines
-                                        diff = abs(missions(l)%altitude -
-zcgs(i,k,j)*1.0E-5)
+                                        diff = abs(missions(l)%altitude - zcgs(i,k,j)*1.0E-5)
                                                 if (diff < min_diff) then
                                                         min_diff = diff
                                                         target_index = l
                                                 end if
                                 end do
 
-                                if (zcgs(i,k,j)*1.0E-5 .gt.
-MAXVAL(missions%altitude)) then
+                                if (zcgs(i,k,j)*1.0E-5 .gt. MAXVAL(missions%altitude)) then
                                         FACTZ(i,k,j) = 0.
-                                else if (zcgs(i,k,j)*1.0E-5 .lt.
-MINVAL(missions%altitude)) then
+                                else if (zcgs(i,k,j)*1.0E-5 .lt. MINVAL(missions%altitude)) then
                                         FACTZ(i,k,j) = missions(1)%ratio
                                 else
-                                        FACTZ(i,k,j) =
-missions(target_index)%ratio
+                                        FACTZ(i,k,j) = missions(target_index)%ratio
                                 end if
 
                                 !print *, 'target altitude is
