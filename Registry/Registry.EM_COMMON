@@ -340,7 +340,7 @@ i1       real   alpha          ikj     dyn_em      1         -
 i1       real   a              ikj     dyn_em      1         -                                                  
 i1       real   gamma          ikj     dyn_em      1         -                                                  
 i1       real   c2a            ikj     dyn_em      1         -     -
-state    real   rho            ikj      misc       1         -     r      "RHO"              "DENSITY"         "Kg m-3"
+state    real   rho            ikj      misc       1         -     rh      "RHO"              "DENSITY"         "Kg m-3"
 i1       real   phm            ikj     dyn_em      1         -     -
 i1       real   cqu            ikj     dyn_em      1         -     -
 i1       real   cqv            ikj     dyn_em      1         -     -
@@ -411,6 +411,14 @@ state   real    bldtacttime    -        -         -         -     r         "bld
 state   real    cudtacttime    -        -         -         -     r         "cudtacttime"              "CUDTACTTIME"         "CPS   ACTIVATION TIME in s"
 state   real    ltngacttime    -        -         -         -     r         "ltngacttime"              "LTNGACTTIME"         "LTNG  ACTIVATION TIME in s"
 state   real    power          ij       misc      1         -     irh       "Power"                   "Power production"         "W"
+state   real    pcc2           ikj      misc      1         -     rh        "PCDCE"                  "cloud droplet condensation and evaporation production" "kg kg-1"
+state   real    pcr2           ikj      misc      1         -     rh        "PRCOND"                 "rain condensation production" "kg kg-1"
+state   real    per2           ikj      misc      1         -     rh        "PREVAP"                 "rain evaporation production" "kg kg-1"
+state   real    pisub2         ikj      misc      1         -     rh        "PISUBDPV"               "ice deposition-sublimation production" "kg kg-1"
+state   real    pfrz2          ikj      misc      1         -     rh        "PFRZ"                   "total freezing production" "kg kg-1"
+state   real    pmlt2          ikj      misc      1         -     rh        "PMELT"                  "total melt production" "kg kg-1"
+state   real    prim2          ikj      misc      1         -     rh        "PRIME"                  "total riming production" "kg kg-1"
+state   real    supersat       ikj      misc      1         -     rh        "SUPSAT_NSSL"            "supersaturation" "%"
 
 
 # State for derived time quantities.  
@@ -2150,6 +2158,11 @@ state     real    cldtopz        ij       dyn_em      1         -    i01h "cldto
 state     real    cldbasez       ij       dyn_em      1         -    i01h "cldbasez" "Cloud base height above ground level" "m agl"
 
 # Accumulated physics tendencies
+state    real  ATLCOND         ikj       misc     1         -      h       "ATLCOND"        "ACCUMULATED TEMPERATURE CHANGE FROM SBM DROPLET DIFFUSIONAL GROWTH"    "K "
+state    real  ATICOND         ikj       misc     1         -      h       "ATICOND"        "ACCUMULATED TEMPERATURE CHANGE FROM SBM ICE DIFFUSIONAL GROWTH"        "K "
+state    real  ATMELT          ikj       misc     1         -      h       "ATMELT"         "ACCUMULATED TEMPERATURE CHANGE FROM SBM MELTING"                       "K "
+state    real  ATRIME          ikj       misc     1         -      h       "ATRIME"         "ACCUMULATED TEMPERATURE CHANGE FROM SBM RIMING"                        "K "
+state    real  ATFREEZE        ikj       misc     1         -      h       "ATFREEZE"       "ACCUMULATED TEMPERATURE CHANGE FROM SBM FREEZING"                      "K "
 state    real  ATHMPTEN        ikj       misc     1         -      h       "ATHMPTEN"        "ACCUMULATED THETA TENDENCY DUE TO MICROPHY SCHEME"    "K "
 state    real  AQVMPTEN        ikj       misc     1         -      h       "AQVMPTEN"        "ACCUMULATED Q_V TENDENCY DUE TO MICROPHY SCHEME"      "kg kg-1 "
 state    real  ATHCUTEN        ikj       misc     1         -      h       "ATHCUTEN"        "ACCUMULATED THETA TENDENCY DUE TO CUMULUS SCHEME"     "K "

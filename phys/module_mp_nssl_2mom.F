@@ -3295,16 +3295,36 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
 
    ENDIF
 
+   DO kz = kts,kte
+         DO ix = its,ite
+           t0(ix,1,kz) = an(ix,1,kz,lt)*t77(ix,1,kz) ! temperature (Kelvin) 
+           ltemq = Int( (t0(ix,1,kz)-163.15)/fqsat+1.5 )
+           ltemq = Min( nqsat, Max(1,ltemq) )
 
+           t8s = t00(ix,1,kz)*tabqvs(ltemq)  !saturation mixing ratio wrt water
+
+           ! % supersaturation
+           axtra2d(ix,1,kz,8) = 100 * (an(ix,1,kz,lv)/t8s - 1.0)
+         ENDDO
+     ENDDO
 
 
      ENDDO ! loopcnt=1,loopmax
+
      IF ( present( pcc2 ) .and. makediag ) THEN
          DO kz = kts,kte
           DO ix = its,ite
 ! example of using the 'axtra2d' array to get rates out of the microphysics routine for output.
 ! Search for 'axtra' to find example code below
 !            pcc2(ix,kz,jy)    = axtra2d(ix,1,kz,1)
+            pcc2(ix,kz,jy)    = axtra2d(ix,1,kz,1) ! condesation/evap of droplets
+            pcr2(ix,kz,jy)    = axtra2d(ix,1,kz,2) ! condensation of rain
+            per2(ix,kz,jy)    = axtra2d(ix,1,kz,3) ! evaporation of rain
+            pisub2(ix,kz,jy)  = axtra2d(ix,1,kz,4) ! deposition/sublimation of ice
+            pfrz2(ix,kz,jy)   = axtra2d(ix,1,kz,5) ! total freezing
+            pmlt2(ix,kz,jy)   = axtra2d(ix,1,kz,6) ! total melting
+            prim2(ix,kz,jy)   = axtra2d(ix,1,kz,7) ! total riming
+            supersat(ix,kz,jy) = axtra2d(ix,1,kz,8) ! super-saturation wrt water
           ENDDO
          ENDDO
      ENDIF
@@ -25137,9 +25157,15 @@ END SUBROUTINE nssl_2mom_driver
        DO mgs = 1,ngscnt
         !  axtra(igs(mgs),jy,kgs(mgs),1)  = pfrz(mgs) !         ! currently, 1 and 2 are used in subroutine NUCOND
         !  axtra(igs(mgs),jy,kgs(mgs),2)  = qrcev(mgs) ! pre2   ! currently, 1 and 2 are used in subroutine NUCOND
-         axtra(igs(mgs),jy,kgs(mgs),3)  = psub(mgs) ! depsubr
-         axtra(igs(mgs),jy,kgs(mgs),4)  = qrfrz(mgs) ! rain freezing (Bigg)
-         axtra(igs(mgs),jy,kgs(mgs),5)  = pmlt(mgs) ! melr2
+         axtra(igs(mgs),jy,kgs(mgs),3)  = dtp*qrcev(mgs)*felvcp(mgs)! dTemp due to rain evap 
+         axtra(igs(mgs),jy,kgs(mgs),4)  = dtp*psub(mgs)*felscp(mgs) ! dTemp due to ice diffusion 
+         axtra(igs(mgs),jy,kgs(mgs),5)  = dtp*(il5(mgs)*(1-imixedphase)*(qrfrz(mgs) + qiacr(mgs)) &
+                                               +il5(mgs)*(qwfrz(mgs)+qwctfz(mgs)))*felfcp(mgs) ! dTemp due to total freezing
+         axtra(igs(mgs),jy,kgs(mgs),6)  = dtp*pmlt(mgs)*felfcp(mgs) ! dTemp due to total melting
+         axtra(igs(mgs),jy,kgs(mgs),7) = dtp * ((il5(mgs) * (1 - imixedphase) * (qsacw(mgs) + qhacw(mgs) + &
+                                                  qhlacw(mgs) + qsacr(mgs) + qhacr(mgs) + qhlacr(mgs) + qsshr(mgs) + qhshr(mgs) + &
+                                                  qhlshr(mgs))) + il5(mgs) * qiacw(mgs)) * felfcp(mgs) ! dTemp due to total riming
+             
        ENDDO
      ENDIF
 
