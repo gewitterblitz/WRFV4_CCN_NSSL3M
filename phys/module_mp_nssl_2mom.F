@@ -2537,7 +2537,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
      integer :: nx,ny,nz,ngs
      integer ix,jy,kz,i,j,k,il,n
      integer :: infdo
-     real :: ssival, ssifac, t8s, t9s, qvapor
+     real :: ssival, ssifac, t8s, t9s, qvapor, c1
      integer :: ltemq
      double precision :: dp1
      integer :: jye, lnb
@@ -3301,10 +3301,11 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
            ltemq = Int( (t0(ix,1,kz)-163.15)/fqsat+1.5 )
            ltemq = Min( nqsat, Max(1,ltemq) )
 
-           t8s = t00(ix,1,kz)*tabqvs(ltemq)  !saturation mixing ratio wrt water
+           !t8s = t00(ix,1,kz)*tabqvs(ltemq)  !saturation mixing ratio wrt water
+           c1 = rdorv*esbolton*tabqvs(ltemq)/(pn(ix,1,kz) + pb(kz) - esbolton*tabqvs(ltemq))
 
            ! % supersaturation
-           axtra2d(ix,1,kz,8) = 100 * (an(ix,1,kz,lv)/t8s - 1.0)
+           axtra2d(ix,1,kz,8) = 100. * (an(ix,1,kz,lv)/c1 - 1.0)
          ENDDO
      ENDDO
 
