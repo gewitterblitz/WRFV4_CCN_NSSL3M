@@ -999,7 +999,7 @@ MODULE module_mp_nssl_2mom
       real :: cckm,ccne,ccnefac,cnexp,CCNE0
 
       integer :: na = 9
-      integer :: nxtra = 5
+      integer :: nxtra = 8
       real gf4p5, gf4ds, gf4br
       real gsnow1, gsnow53, gsnow73
       real gfcinu1, gfcinu1p47, gfcinu2p47
