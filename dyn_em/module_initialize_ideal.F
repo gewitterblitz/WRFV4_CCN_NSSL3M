@@ -1425,6 +1425,10 @@ MODULE module_initialize_ideal
     CALL get_sounding( zk, p_in, pd_in, theta, rho, u, v, qv, etal, dry_sounding, &
                      nl_max, nl_in, theta_surf )
   ENDIF
+
+  call read_aerosol(zcgs,FACTZ,its,ite,jts,jte,kts,kte, &
+                           i_start,i_end,j_start,j_end)
+
   DO J = jts, min(jde-1,jte)
   
   IF ( model_config_rec%ideal_case .EQ. b_wave )THEN
