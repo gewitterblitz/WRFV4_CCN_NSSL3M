@@ -3308,7 +3308,8 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
            ENDIF
 
            ! % supersaturation
-           axtra2d(ix,1,kz,8) = 100.*(an(ix,1,kz,lv)/t8s - 1.0)
+           !axtra2d(ix,1,kz,8) = 100.*(an(ix,1,kz,lv)/t8s - 1.0)
+           supersat(ix,kz,jy) = 100.*(an(ix,1,kz,lv)/t8s - 1.0)
          ENDDO
        ENDDO  
 
@@ -3328,7 +3329,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
             pfrz2(ix,kz,jy)   = axtra2d(ix,1,kz,5) ! total freezing
             pmlt2(ix,kz,jy)   = axtra2d(ix,1,kz,6) ! total melting
             prim2(ix,kz,jy)   = axtra2d(ix,1,kz,7) ! total riming
-            supersat(ix,kz,jy) = axtra2d(ix,1,kz,8) ! super-saturation wrt water
+            !supersat(ix,kz,jy) = axtra2d(ix,1,kz,8) ! super-saturation wrt water
           ENDDO
          ENDDO
      ENDIF
