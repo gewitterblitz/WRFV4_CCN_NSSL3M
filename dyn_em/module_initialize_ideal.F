@@ -1462,12 +1462,12 @@ MODULE module_initialize_ideal
          IF ( config_flags%nssl_ccn_is_ccna == 0 .or. config_flags%nssl_ccn_on >= 2 ) THEN ! qnn field is for UNactivated CCN
           ! The value of 1.225 converts number per m^3 to number per kg at sea level pressure in a perfectly mixed atmosphere
            !scalar(i,k,j,P_QNN) = grid%nssl_cccn/1.225
-           scalar(i,k,j,P_QNN) = MAX(20.,  (FACTZ(i,k,j) * 1.0D6)/1.225 )
+           scalar(i,k,j,P_QNN) = MAX(20.,  (grid%nssl_cccn*FACTZ(i,k,j))/1.225 )
            IF ( P_QNN_NU > 1 ) THEN
-              scalar(i,k,j,P_QNN_NU) = grid%nssl_cccnnu/1.225
+              scalar(i,k,j,P_QNN_NU) = MAX(10., (grid%nssl_cccnnu*FACTZ(i,k,j))/1.225)
            ENDIF
            IF ( P_QNN_CO > 1 ) THEN
-              scalar(i,k,j,P_QNN_CO) = grid%nssl_cccnco/1.225
+              scalar(i,k,j,P_QNN_CO) = MAX(1., (grid%nssl_cccnco*FACTZ(i,k,j))/1.225)
            ENDIF
 !  Alternatively one can set CCN values as a function of k
 !   Values should be set as number per kilogram

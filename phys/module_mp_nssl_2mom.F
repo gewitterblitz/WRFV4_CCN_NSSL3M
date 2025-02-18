@@ -3294,20 +3294,23 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
 
 
    ENDIF
-
+   
    DO kz = kts,kte
          DO ix = its,ite
            t0(ix,1,kz) = an(ix,1,kz,lt)*t77(ix,1,kz) ! temperature (Kelvin) 
            ltemq = Int( (t0(ix,1,kz)-163.15)/fqsat+1.5 )
            ltemq = Min( nqsat, Max(1,ltemq) )
 
-           !t8s = t00(ix,1,kz)*tabqvs(ltemq)  !saturation mixing ratio wrt water
-           c1 = rdorv*esbolton*tabqvs(ltemq)/(pn(ix,1,kz) + pb(kz) - esbolton*tabqvs(ltemq))
+           IF ( iqvsopt == 0 ) THEN
+             t8s = t00(ix,1,kz)*tabqvs(ltemq)  !saturation mixing ratio wrt water
+           ELSE
+             t8s = rdorv*esbolton*tabqvs(ltemq)/(pn(ix,1,kz) - esbolton*tabqvs(ltemq))
+           ENDIF
 
            ! % supersaturation
-           axtra2d(ix,1,kz,8) = 100. * (an(ix,1,kz,lv)/c1 - 1.0)
+           axtra2d(ix,1,kz,8) = 100.*(an(ix,1,kz,lv)/t8s - 1.0)
          ENDDO
-     ENDDO
+       ENDDO  
 
 
      ENDDO ! loopcnt=1,loopmax
