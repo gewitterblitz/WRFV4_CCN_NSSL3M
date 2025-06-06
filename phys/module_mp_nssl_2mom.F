@@ -2381,6 +2381,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
                               induc,elecz,scion,sciona,f_scion,f_sciona,                &
                               noninduc,noninducp,noninducn,                             &
                               pcc2,pcr2,per2,pisub2,pfrz2,pmlt2,prim2,supersat,         &
+                              rdropnucl,ricenucl,                                       &
                               mnucf2, melr2, ctr2,     &
                               rim1_2, rim2_2,rim3_2, &
                               nctr2, nnuccd2, nnucf2, &
@@ -2448,6 +2449,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
       real, dimension(ims:ime, kms:kme, jms:jme), intent(in)::  pii
       real, dimension(ims:ime, kms:kme, jms:jme), optional, intent(inout)::   &
                               pcc2,pcr2,per2,pisub2,pfrz2,pmlt2,prim2,supersat, &
+                              rdropnucl,ricenucl,      &
                               mnucf2, melr2, ctr2,     &
                               rim1_2, rim2_2,rim3_2, &
                               nctr2, nnuccd2, nnucf2, &
@@ -3310,6 +3312,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
            ! % supersaturation
            !axtra2d(ix,1,kz,8) = 100.*(an(ix,1,kz,lv)/t8s - 1.0)
            supersat(ix,kz,jy) = 100.*(an(ix,1,kz,lv)/t8s - 1.0)
+           ricenucl(ix,kz,jy) = t7(ix,1,kz)/dn1(ix,1,kz) 
          ENDDO
        ENDDO  
 
@@ -3482,6 +3485,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
          IF ( flag_qi ) qi(ix,kz,jy)  = an(ix,1,kz,li)
          qs(ix,kz,jy)  = an(ix,1,kz,ls)
          qh(ix,kz,jy)  = an(ix,1,kz,lh)
+         rdropnucl(ix,kz,jy) = an(ix,1,kz,il)
          IF ( lhl > 1 ) qhl(ix,kz,jy) = an(ix,1,kz,lhl)
          
          IF ( lccn > 1 .and. is_aerosol_aware .and. flag_qnwfa ) THEN

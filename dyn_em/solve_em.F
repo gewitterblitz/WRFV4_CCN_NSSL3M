@@ -3974,6 +3974,8 @@ BENCH_START(micro_driver_tim)
       &        ,pisub2=grid%pisub2,pfrz2=grid%pfrz2,pmlt2=grid%pmlt2     &
       &        ,prim2=grid%prim2                                         &
       &        ,supersat=grid%supersat                                   &
+      &        ,rdropnucl=grid%rdropnucl                                 &
+      &        ,ricenucl=grid%ricenucl                                   &
 ! WRF-Solar EPS
       &        ,multi_perturb=config_flags%multi_perturb                 &
       &        ,pert_thom=config_flags%pert_thom                         &

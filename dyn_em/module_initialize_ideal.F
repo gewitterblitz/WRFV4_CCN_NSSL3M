@@ -42,6 +42,35 @@ MODULE module_initialize_ideal
 
  CONTAINS
 
+ SUBROUTINE reinit_random_seed
+    IMPLICIT NONE
+
+    INTEGER :: k, i
+    INTEGER, DIMENSION(8) :: values
+    INTEGER, DIMENSION(:), ALLOCATABLE :: sand
+    REAL :: rand
+
+    CALL DATE_AND_TIME(values=values)
+    CALL RANDOM_SEED(size=k)
+
+    k = MAX(8, k)  ! Ensure at least 8 elements
+    ALLOCATE(sand(k))
+
+    ! Mix time-based values using a simple hashing technique
+    DO i = 1, k
+        sand(i) = values(MOD(i,8) + 1) * (i + 17) + values(8) * (i + 31)
+    END DO
+
+    CALL RANDOM_SEED(put=sand(1:k))
+
+    ! Warm-up step to remove initial bias
+    DO i = 1, 5
+        CALL RANDOM_NUMBER(rand)
+    END DO
+
+    DEALLOCATE(sand)
+
+ END SUBROUTINE reinit_random_seed
 
 !-------------------------------------------------------------------
 ! this is a wrapper for the solver-specific init_domain routines.
@@ -163,6 +192,7 @@ MODULE module_initialize_ideal
 #endif
    REAL :: randx       ! for LES
    INTEGER :: ks, ke, id
+   REAL :: amplitude,rand
 
    LOGICAL, EXTERNAL :: wrf_dm_on_monitor
    
@@ -1462,12 +1492,14 @@ MODULE module_initialize_ideal
          IF ( config_flags%nssl_ccn_is_ccna == 0 .or. config_flags%nssl_ccn_on >= 2 ) THEN ! qnn field is for UNactivated CCN
           ! The value of 1.225 converts number per m^3 to number per kg at sea level pressure in a perfectly mixed atmosphere
            !scalar(i,k,j,P_QNN) = grid%nssl_cccn/1.225
-           scalar(i,k,j,P_QNN) = MAX(20.,  (grid%nssl_cccn*FACTZ(i,k,j))/1.225 )
+           scalar(i,k,j,P_QNN) = MAX(20.D06,  (grid%nssl_cccn*FACTZ(i,k,j))/1.225 )
            IF ( P_QNN_NU > 1 ) THEN
-              scalar(i,k,j,P_QNN_NU) = MAX(10., (grid%nssl_cccnnu*FACTZ(i,k,j))/1.225)
+              !scalar(i,k,j,P_QNN_NU) = grid%nssl_cccnnu/1.225
+              scalar(i,k,j,P_QNN_NU) = MAX(10.D06, (grid%nssl_cccnnu*FACTZ(i,k,j))/1.225)
            ENDIF
            IF ( P_QNN_CO > 1 ) THEN
-              scalar(i,k,j,P_QNN_CO) = MAX(1., (grid%nssl_cccnco*FACTZ(i,k,j))/1.225)
+              !scalar(i,k,j,P_QNN_CO) = grid%nssl_cccnco/1.225
+              scalar(i,k,j,P_QNN_CO) = MAX(1.D06, (grid%nssl_cccnco*FACTZ(i,k,j))/1.225)
            ENDIF
 !  Alternatively one can set CCN values as a function of k
 !   Values should be set as number per kilogram
@@ -1555,6 +1587,9 @@ MODULE module_initialize_ideal
   write(6,*) ' nxc, nyc for perturbation ',nxc,nyc
   write(6,*) ' delt for perturbation ',delt
 
+  ! reinitialize pseudorandom number generator:
+  call reinit_random_seed
+
   DO J = jts, min(jde-1,jte)
     yrad = config_flags%dy*float(j-nyc)/yradbub
 !   yrad = 0.
@@ -1578,9 +1613,22 @@ MODULE module_initialize_ideal
                    +grid%phb(i,k,j)+grid%phb(i,k+1,j))/g
         zrad = (zrad-zradbub)/zradbub
         RAD=SQRT(xrad*xrad+yrad*yrad+zrad*zrad)
+
+        ! this is the amplitude of the theta perturbations
+        ! (plus or minus this value in K)
+        amplitude = 0.1
+
+        ! random numbers added here
+        ! (can be modified to only place perturbations in certain
+        !  locations, but this default code simply puts them
+        !  everywhere)
+
+        call random_number(rand)
+
+
         IF(RAD <= 1.) THEN
            thtmp   = grid%t_1(i,k,j) + t0
-           grid%t_1(i,k,j)=grid%t_1(i,k,j)+delt*COS(.5*PI*RAD)**2 + dthran
+           grid%t_1(i,k,j)=grid%t_1(i,k,j)+delt*COS(.5*PI*RAD)**2 + amplitude*(2.0*rand-1.0) !dthran
            grid%t_2(i,k,j)=grid%t_1(i,k,j)
            qvf = 1. + rvovrd*moist(i,k,j,P_QV)
            grid%alt(i,k,j) = (r_d/p1000mb)*(grid%t_1(i,k,j)+t0)*qvf* &
@@ -2333,7 +2381,7 @@ MODULE module_initialize_ideal
                                 if (zcgs(i,k,j)*1.0E-5 .gt. MAXVAL(missions%altitude)) then
                                         FACTZ(i,k,j) = 0.
                                 else if (zcgs(i,k,j)*1.0E-5 .lt. MINVAL(missions%altitude)) then
-                                        FACTZ(i,k,j) = missions(1)%ratio
+                                        FACTZ(i,k,j) = 1. !missions(1)%ratio
                                 else
                                         FACTZ(i,k,j) = missions(target_index)%ratio
                                 end if

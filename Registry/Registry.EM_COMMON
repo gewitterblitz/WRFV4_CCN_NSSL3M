@@ -419,6 +419,8 @@ state   real    pfrz2          ikj      misc      1         -     rh        "PFR
 state   real    pmlt2          ikj      misc      1         -     rh        "PMELT"                  "total melt production" "kg kg-1"
 state   real    prim2          ikj      misc      1         -     rh        "PRIME"                  "total riming production" "kg kg-1"
 state   real    supersat       ikj      misc      1         -     rh        "SUPSAT_NSSL"            "supersaturation" "%"
+state   real    rdropnucl      ikj      misc      1         -     rh        "RDROPNUCL"              "droplet nucleation rate" "# kg-1"
+state   real    ricenucl       ikj      misc      1         -     rh        "RICENUCL"               "ice nucleation rate"     "# kg-1"
 
 
 # State for derived time quantities.  
